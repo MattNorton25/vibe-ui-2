@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "skills": {
+    "particles-gpu": {
+      "source": "bbeierle12/skill-mcp-claude",
+      "sourceType": "github",
+      "computedHash": "336bdd62df0013329058ce024f3cf4e03c0e30996b0bda39324e16fde1a07cb5"
+    },
+    "particles-physics": {
+      "source": "bbeierle12/skill-mcp-claude",
+      "sourceType": "github",
+      "computedHash": "417beb26bd3e41ccb2ed75f00ea6976f36f4f79da7ecb76be8017738ceaaefa0"
+    },
+    "react-performance-optimization": {
+      "source": "nickcrew/claude-ctx-plugin",
+      "sourceType": "github",
+      "computedHash": "841fb99740109cd8b77606c9402fbb81e44a5f8c5fc6b3dc010e9397218e33cb"
+    },
+    "ui-animation": {
+      "source": "mblode/agent-skills",
+      "sourceType": "github",
+      "computedHash": "2246d0232b13fcb9b0aea790e2a7716c6db83c547a9588a2114ef0566adacb35"
+    },
+    "websocket-engineer": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "computedHash": "a498a3fb8345b1edff9634de603ccc33aa58f98374870d8504b672384a28513d"
+    }
+  }
+}
