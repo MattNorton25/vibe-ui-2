@@ -1,30 +1,22 @@
-# Vibe UI - Agent-Driven Ambient Interface
+# Vibe UI 2.0 🌊
 
-A revolutionary ambient UI that rhythmically "vibes" with your AI agents as they work, progressively building beautiful geometric patterns as tasks complete. Born from the idea of creating visual feedback that's entertaining but not distracting, celebrating actual productivity rather than just eye candy.
+> Transform your AI agent work into beautiful, rhythmic geometric patterns
 
-## 🌟 Core Vision
+A revolutionary ambient UI that visualizes AI productivity through flowing particles that crystallize into stunning patterns as tasks complete. Watch your Claude Code sessions become living art.
 
-**The Problem**: AI agents work invisibly. You don't see their progress, effort, or completion. Work feels disconnected from visual satisfaction.
+![React](https://img.shields.io/badge/React-18-blue)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
+![WebSocket](https://img.shields.io/badge/WebSocket-Real--time-orange)
+![Status](https://img.shields.io/badge/Status-Ready%20to%20Use-brightgreen)
 
-**The Solution**: A unified vibe-pattern system where particles flow and dance with work rhythm, gradually crystallizing into geometric patterns as real tasks complete. It's both mesmerizing to watch AND functionally represents actual productivity.
+## ✨ Features
 
-## 🎨 Architecture Overview
-
-### Agent-Driven Design Pattern
-Built using an **agent-based architecture** where specialized "agents" (code modules) handle different aspects:
-
-- **VibeAgent** - Mood assessment, theme selection, atmospheric control
-- **ActivityAgent** - Work state detection, pattern analysis, rhythm tracking  
-- **TaskTrackerAgent** - Visual todo management, pattern session coordination
-- **AgentOrchestrator** - Central coordination and event management
-
-### Unified Vibe-Pattern Canvas
-The revolutionary **VibePatternCanvas** seamlessly blends two experiences:
-
-1. **Particle System** - Dynamic particles that respond to work rhythm
-2. **Pattern Builder** - Geometric shapes that build as tasks complete
-
-**Key Innovation**: Instead of separate modes, particles organically flow toward pattern positions, creating **streams of energy** that crystallize into geometric shapes upon task completion.
+🎭 **Advanced Particle Physics** - Magnetism system with particles flowing toward pattern positions  
+🌟 **5 Beautiful Patterns** - Constellation, Mandala, Circuit, Crystal, Spiral - each for different work types  
+🔗 **Claude Code Integration** - Real-time hooks that respond to your actual coding activities  
+🎮 **Demo + Live Modes** - Test patterns instantly or connect to real work  
+⚡ **60fps Performance** - Smooth animations with intelligent performance optimization  
+🌊 **Rhythm Engine** - Multi-layered timing system creates organic, breathing movement
 
 ## 🚀 Quick Start
 
@@ -32,259 +24,113 @@ The revolutionary **VibePatternCanvas** seamlessly blends two experiences:
 # Install dependencies
 npm install
 
-# Run the complete system (server + UI)
+# Start the React app
 npm run dev
+
+# In another terminal, start the WebSocket server
+cd server && node index.js
 ```
 
-This starts:
-- **WebSocket server** on port 3002 (API + real-time events)
-- **React app** on port 3000 (UI interface)
+Open http://localhost:3002 and switch between **Demo Mode** (test patterns) and **Live Mode** (Claude Code integration).
 
 ## 🎯 Pattern Types
 
-### Mandala 🌸
-- **Use case**: Complex feature development
-- **Visual**: Radiating rings and petals from center
-- **Behavior**: Each task adds a ring, creating sacred geometry
-- **Best for**: 5-8 step implementations
+| Pattern | Best For | Visual Style |
+|---------|----------|--------------|
+| 🌟 **Constellation** | Debugging & Investigation | Stars in circular formation |
+| 🌸 **Mandala** | Feature Development | Radiating rings from center |
+| ⚡ **Circuit** | System Optimization | Electronic grid pathways |
+| 💎 **Crystal** | Architecture Work | Hexagonal crystalline structure |
+| 🌀 **Spiral** | Iterative Development | Galaxy spiral formation |
 
-### Constellation ⭐
-- **Use case**: Debugging and problem-solving
-- **Visual**: Stars connecting in circular formation
-- **Behavior**: Sequential connections form recognizable patterns
-- **Best for**: 3-6 step investigations
+## 🔗 Claude Code Integration
 
-### Circuit ⚡
-- **Use case**: System optimization and technical tasks
-- **Visual**: Electronic pathways lighting up
-- **Behavior**: Right-angle connections like circuit traces
-- **Best for**: 6-10 optimization steps
+Ready-to-use hook scripts in `claude-hooks/`:
 
-### Crystal 💎
-- **Use case**: Architectural and structural work
-- **Visual**: Growing crystalline structures with branching facets
-- **Behavior**: Hexagonal layers building outward
-- **Best for**: Foundation and framework tasks
+```bash
+# Start a new session
+./claude-hooks/task-start.sh "Implementing new feature" mandala 8
 
-### Spiral 🌀
-- **Use case**: Iterative development and creative projects
-- **Visual**: Arms extending in galaxy formation
-- **Behavior**: Continuous spiral growth
-- **Best for**: Ongoing development with multiple iterations
+# Complete a task  
+./claude-hooks/task-complete.sh "Successfully implemented core logic"
 
-## 🌊 Rhythmic Behavior System
+# Update work status
+./claude-hooks/work-status.sh "working" "Debugging complex algorithm"
 
-### Multi-Layered Rhythm Engine
-```javascript
-// Core rhythm calculation
-const basePulse = Math.sin(time * 2) * 0.5 + 0.5;      // 2Hz base rhythm
-const rapidPulse = Math.sin(time * 6) * 0.3 + 0.7;     // 6Hz detail rhythm  
-const slowWave = Math.sin(time * 0.5) * 0.2 + 0.8;     // 0.5Hz breathing
-const rhythmPulse = basePulse * rapidPulse * slowWave;
+# Run full demo
+./claude-hooks/demo-integration.sh
 ```
 
-### Work State Behaviors
-- **Idle**: Gentle floating with subtle rhythm waves
-- **Thinking**: Swirling motion with rhythmic acceleration
-- **Working**: Strong energy pulses with directional rhythm waves  
-- **Complete**: Explosive celebration with radial bursts
+Add these to your Claude Code hooks configuration to see real-time patterns as you work!
 
-### Particle Magnetism System
-Particles are dynamically assigned to tasks based on status:
+## 📡 API Integration
 
-- **Completed tasks**: Particles crystallize at pattern positions with glow effects
-- **In-progress tasks**: Particles flow toward positions with strength based on progress
-- **Pending tasks**: Weak magnetic attraction shows future structure
-- **No session**: Particles roam freely, pure ambient vibe
-
-## 📡 Real-Time Integration
-
-### WebSocket API
-Connect any external system to drive the visual experience:
+Connect any external system via WebSocket or HTTP:
 
 ```bash
 # Start a pattern session
-curl -X POST http://localhost:3002/api/pattern/start \
+curl -X POST http://localhost:3003/api/pattern/start \
+  -H "Content-Type: application/json" \
   -d '{"type": "mandala", "taskCount": 5, "description": "Feature development"}'
 
-# Update task progress  
-curl -X POST http://localhost:3002/api/pattern/task-progress \
-  -d '{"sessionId": "session-1", "taskId": "task-1", "progress": 0.7}'
-
 # Complete a task
-curl -X POST http://localhost:3002/api/pattern/task-complete \
-  -d '{"sessionId": "session-1", "taskId": "task-1", "description": "✅ Implemented core logic"}'
+curl -X POST http://localhost:3003/api/pattern/task-complete \
+  -H "Content-Type: application/json" \
+  -d '{"sessionId": "session-id", "taskId": "task-1", "description": "✅ Task done"}'
 ```
-
-### Agent Status Updates
-Update work rhythm and particle behavior:
-
-```bash
-# Change work state
-curl -X POST http://localhost:3002/api/agent-status \
-  -d '{"status": "working", "context": "Debugging complex issue"}'
-
-# Update mood/context
-curl -X POST http://localhost:3002/api/mood \
-  -d '{"context": "High-pressure deadline", "mood": "focused"}'
-```
-
-## 🎭 Demo Examples
-
-### Run Pattern Demonstrations
-```bash
-# Simulate different work patterns
-node examples/pattern-demo.js mandala      # Feature development workflow
-node examples/pattern-demo.js constellation # Debugging workflow  
-node examples/pattern-demo.js circuit      # Optimization workflow
-node examples/pattern-demo.js all          # All patterns in sequence
-```
-
-### Run Activity Simulations
-```bash
-# Simulate work sessions
-node examples/test-integration.js coding    # Development session
-node examples/test-integration.js creative  # Design session
-node examples/test-integration.js debugging # Bug investigation
-```
-
-## 💡 Key Design Decisions
-
-### Why Agent-Based Architecture?
-- **Modularity**: Each agent has clear responsibilities and skills
-- **Extensibility**: Easy to add new agents (AudioAgent, BiometricsAgent, etc.)
-- **Testability**: Agents can be tested independently
-- **Real-world modeling**: Mirrors how actual AI agent systems work
-
-### Why Unified Canvas vs Separate Components?
-**Problem**: Users wanted pattern building AND ambient particles, not either/or.
-
-**Solution**: Particles that flow into patterns. Creates a continuous experience where:
-- Ambient particles provide constant visual interest
-- Pattern magnetism builds anticipation  
-- Crystallization provides completion satisfaction
-- Rhythm ties everything together
-
-### Why Real-Time Pattern Building?
-**Core insight**: The UI should reflect actual work progress, not just demos.
-
-Traditional productivity tools show static progress bars. This system shows:
-- **Living progress** - Particles flowing toward goals
-- **Meaningful completion** - Beautiful geometric celebration
-- **Work rhythm** - Visual feedback matching actual effort
-- **Accomplishment persistence** - Completed patterns remain visible
-
-## 🔮 Future Enhancements
-
-### Planned Features
-- **AudioAgent** - Ambient sound generation synchronized with visuals
-- **BiometricsAgent** - Heart rate and stress level integration
-- **TimeAgent** - Circadian rhythm awareness and adaptation
-- **CollaborationAgent** - Multi-user pattern building
-- **HistoryAgent** - Pattern gallery and productivity insights
-
-### Integration Possibilities
-- **VS Code Extension** - Real-time code analysis pattern building
-- **Claude Code Integration** - Automatic pattern updates during AI sessions
-- **Productivity Apps** - Todoist, Notion, Linear pattern synchronization
-- **Development Tools** - CI/CD pipeline visualization
-- **Communication** - Slack/Discord status integration
 
 ## 🛠️ Technical Architecture
 
-### Frontend Stack
-- **React 18** - Component framework
-- **TypeScript** - Type safety
-- **Canvas API** - High-performance particle rendering
-- **WebSocket Client** - Real-time server communication
+**Frontend:** React 18 + TypeScript + Canvas API  
+**Backend:** Node.js + Express + WebSocket  
+**Physics:** Custom particle system with magnetism  
+**Performance:** Object pooling, frame skipping, adaptive particle count
 
-### Backend Stack  
-- **Node.js + Express** - API server
-- **WebSocket (ws)** - Real-time communication
-- **CORS enabled** - Cross-origin resource sharing
-
-### File Structure
 ```
-vibe-ui/
-├── src/
-│   ├── agents/           # Agent-based architecture
-│   │   ├── BaseAgent.ts           # Core agent framework
-│   │   ├── VibeAgent.ts          # Mood and theming
-│   │   ├── ActivityAgent.ts      # Work state tracking
-│   │   ├── TaskTrackerAgent.ts   # Pattern session management
-│   │   └── AgentOrchestrator.ts  # Central coordination
-│   ├── components/       # React components
-│   │   ├── VibePatternCanvas.tsx # Unified particle-pattern system
-│   │   ├── VibeWidget.tsx        # Main widget container
-│   │   ├── ParticleSystem.tsx    # Legacy particle system
-│   │   └── PatternBuilder.tsx    # Legacy pattern builder
-│   ├── services/
-│   │   └── WebSocketService.ts   # Real-time communication
-│   └── App.tsx          # Main application
-├── server/
-│   └── index.js         # WebSocket server + API
-├── examples/
-│   ├── pattern-demo.js           # Pattern building demos
-│   ├── test-integration.js      # Work session simulations
-│   └── claude-integration.sh    # Shell integration helpers
-└── README.md           # This documentation
+src/
+├── components/
+│   ├── ParticleSystem.ts      # Physics engine
+│   ├── PatternGenerator.ts    # Pattern algorithms  
+│   └── VisualizationCanvas.tsx # Main canvas
+├── services/
+│   └── socketService.ts       # WebSocket client
+└── hooks/
+    └── useAnimationFrame.ts   # 60fps rendering
 ```
 
-## 🎨 Visual Philosophy
+## 🎨 How It Works
 
-### Design Principles
-1. **Entertaining, not distracting** - Visuals enhance focus rather than break it
-2. **Meaningful representation** - Every visual element represents real work
-3. **Progressive disclosure** - Complexity builds with accomplishment
-4. **Rhythmic consistency** - Everything pulses and flows together
-5. **Celebration of completion** - Finishing work feels genuinely rewarding
+1. **Particle Magnetism** - Particles are assigned to pattern positions based on task status
+2. **Rhythm Engine** - Multi-layer sine waves create organic breathing movement  
+3. **Progressive Crystallization** - Completed tasks show crystallized particles with glow effects
+4. **Real-time Sync** - WebSocket updates flow seamlessly into visual changes
 
-### Color Psychology
-- **Primary colors** - Calm, professional base tones
-- **Secondary colors** - Energy and activity indicators  
-- **Accent colors** - Celebration and completion highlights
-- **Dynamic theming** - Colors adapt to mood and context
+## 🎭 Demo Mode Features
 
-### Animation Principles
-- **Rhythm-driven** - All movement synchronized to work pulse
-- **Physics-based** - Natural particle movement and magnetism
-- **State-responsive** - Animations change with work intensity
-- **Smooth transitions** - No jarring changes, only flowing evolution
+- **Pattern Selector** - Try all 5 pattern types with emoji labels
+- **Task Count Slider** - Adjust complexity (3-15 tasks)
+- **Work State Controls** - Test different rhythm behaviors
+- **Real-time FPS Monitor** - Performance feedback
 
-## 📈 Usage Analytics Ideas
+## 🔮 Future Possibilities
 
-### Potential Metrics
-- **Pattern completion rates** - Which patterns motivate best?
-- **Work rhythm analysis** - Optimal productivity pulse frequencies
-- **Session duration correlation** - Visual feedback impact on focus time
-- **Mood-pattern associations** - Which patterns work for which contexts
-- **Celebration effectiveness** - Does completion animation increase satisfaction?
+- **VS Code Extension** - Real-time code analysis visualization
+- **Productivity App Integration** - Todoist, Notion, Linear connections  
+- **Multi-user Sessions** - Collaborative pattern building
+- **Audio Synchronization** - Sound generation matching visuals
+- **Biometric Integration** - Heart rate and stress level visualization
 
-## 🤝 Contributing
+## 🎯 Success Vision
 
-This is an experimental R&D project exploring the intersection of:
-- AI agent visualization
-- Ambient computing interfaces  
-- Productivity gamification
-- Real-time visual feedback systems
-
-The codebase is designed for experimentation and extension. Key areas for contribution:
-
-1. **New Agent Types** - Expand the agent ecosystem
-2. **Pattern Variations** - Create new geometric pattern types
-3. **Rhythm Enhancements** - More sophisticated timing systems
-4. **Integration Adapters** - Connect to new external systems
-5. **Performance Optimization** - Canvas rendering improvements
-
-## 🎯 Success Metrics
-
-This project succeeds if:
-- **Work feels more engaging** - Visual feedback increases motivation
-- **Completion feels rewarding** - Pattern building provides satisfaction  
-- **Progress is visible** - Hidden work becomes tangible and celebrated
-- **Rhythm enhances focus** - Visual pulse helps maintain productive flow
-- **Real utility emerges** - People actually use it for real work
+This project succeeds when:
+- ✅ Work feels more engaging through visual feedback
+- ✅ Task completion provides genuine satisfaction  
+- ✅ Hidden progress becomes tangible and celebrated
+- ✅ The rhythm enhances rather than distracts from flow
+- ✅ People use it for real work, not just demos
 
 ---
 
-*Built with ❤️ as an exploration in making AI agent work visible, engaging, and beautiful.*
+*Built with ❤️ to make AI agent work visible, engaging, and beautiful.*
+
+**Ready to turn your productivity into art?** 🎨
