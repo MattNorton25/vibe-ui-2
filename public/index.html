@@ -563,7 +563,22 @@ function transitionTo(newState) {
   particles.forEach((p, i) => {
     if (p.exiting) return;
 
-    // Snapshot source values
+    // Resolve any in-flight transition to current visible values before snapshotting,
+    // so interrupted transitions (e.g. RECEIVING cut off by THINKING auto-transition)
+    // cross-fade from wherever particles actually are, not from a stale source.
+    if (p.targetColorHSL && p.sourceColorHSL && p.particleTransitionStart && p.particleTransitionDuration) {
+      const elapsed = now - p.particleTransitionStart;
+      if (elapsed > 0) {
+        const pt = Math.min(1, elapsed / p.particleTransitionDuration);
+        const easedPt = p.particleEasing ? p.particleEasing(pt) : pt;
+        const hsl = lerpColorHSL(p.sourceColorHSL, p.targetColorHSL, easedPt);
+        p.colorHSL = hsl;
+        p.color = hslToRgb(hsl[0], hsl[1], hsl[2]);
+        p.alpha = p.sourceAlpha + (p.targetAlpha - p.sourceAlpha) * easedPt;
+      }
+    }
+
+    // Snapshot current (possibly mid-transition) values as the new source
     p.sourceColor = p.color.slice();
     p.sourceColorHSL = p.colorHSL ? p.colorHSL.slice() : rgbToHsl(p.color[0], p.color[1], p.color[2]);
     p.sourceAlpha = p.alpha;
@@ -745,6 +760,7 @@ function update(now) {
       } else if (enterProgress >= 1) {
         p.entering = false;
         p.scale = 1;
+        p.sourceAlpha = p.alpha; // hand off cleanly to transition interpolation
       }
     }
 
@@ -785,9 +801,9 @@ function update(now) {
         ];
       } else {
         const hsl = lerpColorHSL(p.sourceColorHSL, p.targetColorHSL, pt);
+        p.colorHSL = hsl;
         p.color = hslToRgb(hsl[0], hsl[1], hsl[2]);
       }
-      p.colorHSL = rgbToHsl(p.color[0], p.color[1], p.color[2]);
     } else if (p.targetColor && pt >= 1) {
       p.color = p.targetColor;
       p.colorHSL = p.targetColorHSL;
@@ -911,11 +927,13 @@ function update(now) {
         if (reducedMotion) {
           p.vx += (tx - p.x) * 0.04;
           p.vy += (ty - p.y) * 0.04;
+          p.vx *= 0.94; p.vy *= 0.94;
         } else {
           const sx = springStep(p.x, tx, p.vx, spring);
           const sy = springStep(p.y, ty, p.vy, spring);
           p.vx = sx.velocity; p.vy = sy.velocity;
           p.x = sx.position; p.y = sy.position;
+          continue;
         }
       } else {
         p.angle += p.orbitSpeed * cfg.speed * dt;
@@ -924,15 +942,15 @@ function update(now) {
         if (reducedMotion) {
           p.vx += (tx - p.x) * 0.02;
           p.vy += (ty - p.y) * 0.02;
+          p.vx *= 0.94; p.vy *= 0.94;
         } else {
           const sx = springStep(p.x, tx, p.vx, spring);
           const sy = springStep(p.y, ty, p.vy, spring);
           p.vx = sx.velocity; p.vy = sy.velocity;
           p.x = sx.position; p.y = sy.position;
+          continue;
         }
       }
-      if (reducedMotion) { p.vx *= 0.94; p.vy *= 0.94; }
-      else { continue; }
 
     } else if (currentState === 'COMPLETE') {
       const target = crystalTargets[i % crystalTargets.length];
