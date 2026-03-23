@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Pulse</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    overflow: hidden;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    color: #fff;
+  }
+  canvas {
+    display: block;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+  }
+  #overlay {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 24px 32px;
+    pointer-events: none;
+    z-index: 10;
+  }
+  #state-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  #state-label {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    opacity: 0.7;
+    transition: color 500ms cubic-bezier(0.23, 1, 0.32, 1),
+                opacity 300ms cubic-bezier(0.23, 1, 0.32, 1),
+                transform 400ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  #state-label.animating-out {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  #tool-label {
+    font-size: 12px;
+    opacity: 0;
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: opacity 400ms cubic-bezier(0.23, 1, 0.32, 1),
+                transform 400ms cubic-bezier(0.23, 1, 0.32, 1);
+    transform: translateY(4px);
+  }
+  #tool-label.visible {
+    opacity: 0.5;
+    transform: translateY(0);
+  }
+  #timeline {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    opacity: 0;
+    transform: scale(0.85);
+    transition: opacity 300ms cubic-bezier(0.23, 1, 0.32, 1),
+                transform 300ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  .dot.visible {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  #connection-status {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    opacity: 0.3;
+    z-index: 10;
+  }
+  #session-count {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    opacity: 0;
+    z-index: 10;
+    transition: opacity 400ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  #session-count.active {
+    opacity: 0.4;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #state-label,
+    #tool-label,
+    .dot,
+    #session-count {
+      transition-duration: 100ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="connection-status">connecting...</div>
+<div id="session-count"></div>
+<div id="overlay">
+  <div id="state-info">
+    <div id="state-label">OFF</div>
+    <div id="tool-label"></div>
+  </div>
+  <div id="timeline"></div>
+</div>
+
+<script>
+// ============================================================
+// STEP 1: Foundation — Easing, HSL, Springs, Accessibility
+// ============================================================
+
+// --- Cubic-Bezier Easing Engine ---
+function cubicBezier(x1, y1, x2, y2) {
+  // Binary-search solver for cubic bezier curves
+  return function(t) {
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+    // Find t parameter for given x using binary search
+    let lo = 0, hi = 1, mid;
+    for (let i = 0; i < 20; i++) {
+      mid = (lo + hi) / 2;
+      const bx = 3 * x1 * mid * (1 - mid) * (1 - mid)
+               + 3 * x2 * mid * mid * (1 - mid)
+               + mid * mid * mid;
+      if (bx < t) lo = mid;
+      else hi = mid;
+    }
+    mid = (lo + hi) / 2;
+    // Evaluate y at found t
+    return 3 * y1 * mid * (1 - mid) * (1 - mid)
+         + 3 * y2 * mid * mid * (1 - mid)
+         + mid * mid * mid;
+  };
+}
+
+const EASING = {
+  enter:  cubicBezier(0.23, 1, 0.32, 1),
+  exit:   cubicBezier(0.55, 0, 0.1, 1),
+  morph:  cubicBezier(0.77, 0, 0.175, 1),
+  snap:   cubicBezier(0.2, 0, 0, 1),
+  gentle: cubicBezier(0.4, 0, 0.2, 1),
+  bounce: cubicBezier(0.34, 1.56, 0.64, 1),
+};
+
+function getTransitionEasing(fromState, toState) {
+  if (toState === 'RECEIVING') return EASING.snap;
+  if (toState === 'COMPLETE') return EASING.bounce;
+  if (toState === 'IDLE' || toState === 'OFF') return EASING.gentle;
+  if (toState === 'WORKING') return EASING.enter;
+  if (toState === 'THINKING') return EASING.morph;
+  if (toState === 'PLANNING') return EASING.morph;
+  if (toState === 'DELEGATING') return EASING.enter;
+  if (fromState && toState === 'OFF') return EASING.exit;
+  return EASING.enter;
+}
+
+// --- HSL Color Interpolation ---
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h, s, l = (max + min) / 2;
+  if (max === min) {
+    h = s = 0;
+  } else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return [h * 360, s, l];
+}
+
+function hslToRgb(h, s, l) {
+  h = ((h % 360) + 360) % 360;
+  h /= 360;
+  let r, g, b;
+  if (s === 0) {
+    r = g = b = l;
+  } else {
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+
+function lerpColorHSL(hslA, hslB, t) {
+  // Shortest-path hue interpolation
+  let dh = hslB[0] - hslA[0];
+  if (dh > 180) dh -= 360;
+  if (dh < -180) dh += 360;
+  const h = hslA[0] + dh * t;
+  const s = hslA[1] + (hslB[1] - hslA[1]) * t;
+  const l = hslA[2] + (hslB[2] - hslA[2]) * t;
+  return [h, s, l];
+}
+
+// --- Spring Physics ---
+function springStep(current, target, velocity, opts) {
+  const { stiffness, damping, mass } = opts;
+  const displacement = current - target;
+  const springForce = -stiffness * displacement;
+  const dampingForce = -damping * velocity;
+  const acceleration = (springForce + dampingForce) / (mass || 1);
+  const newVelocity = velocity + acceleration * (1/60); // fixed timestep for stability
+  const newPosition = current + newVelocity * (1/60);
+  return { position: newPosition, velocity: newVelocity };
+}
+
+const SPRING_PRESETS = {
+  OFF:        { stiffness: 80,  damping: 14, mass: 1 },
+  IDLE:       { stiffness: 80,  damping: 14, mass: 1 },
+  RECEIVING:  { stiffness: 400, damping: 20, mass: 1 },
+  THINKING:   { stiffness: 120, damping: 10, mass: 1 },
+  WORKING:    { stiffness: 250, damping: 15, mass: 1 },
+  PLANNING:   { stiffness: 100, damping: 12, mass: 1 },
+  DELEGATING: { stiffness: 150, damping: 10, mass: 0.8 },
+  COMPLETE:   { stiffness: 60,  damping: 18, mass: 1 },
+};
+
+// --- prefers-reduced-motion ---
+let reducedMotion = false;
+const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+reducedMotion = motionQuery.matches;
+motionQuery.addEventListener('change', (e) => { reducedMotion = e.matches; });
+
+// ============================================================
+// STEP 2: Asymmetric Transition Timing
+// ============================================================
+
+const TRANSITION_TIMING = {
+  OFF:        { enter: 800, exit: 400 },
+  IDLE:       { enter: 700, exit: 300 },
+  RECEIVING:  { enter: 200, exit: 150 },
+  THINKING:   { enter: 400, exit: 300 },
+  WORKING:    { enter: 350, exit: 250 },
+  PLANNING:   { enter: 600, exit: 350 },
+  DELEGATING: { enter: 500, exit: 300 },
+  COMPLETE:   { enter: 900, exit: 500 },
+};
+
+// --- Config per state ---
+const STATE_CONFIGS = {
+  OFF: {
+    count: 20, speed: 0.15, orbit: 0, trail: 0.12,
+    colors: [[200,200,220]], connections: false,
+    particleAlpha: 0.15, sizeRange: [1, 2], labelColor: '#333'
+  },
+  IDLE: {
+    count: 120, speed: 0.4, orbit: 140, trail: 0.06,
+    colors: [[170,210,240],[130,200,220],[100,180,230]],
+    connections: false, particleAlpha: 0.6, sizeRange: [1.5, 3],
+    breathe: true, labelColor: '#5599bb'
+  },
+  RECEIVING: {
+    count: 200, speed: 3, orbit: 0, trail: 0.15,
+    colors: [[255,255,255],[200,220,255],[180,200,255]],
+    connections: false, particleAlpha: 0.9, sizeRange: [1, 4],
+    implode: true, labelColor: '#aabbdd'
+  },
+  THINKING: {
+    count: 250, speed: 1.2, orbit: 120, trail: 0.04,
+    colors: [[160,120,240],[120,140,255],[180,100,220],[100,160,255]],
+    connections: true, particleAlpha: 0.7, sizeRange: [1, 3],
+    labelColor: '#9977dd'
+  },
+  WORKING: {
+    count: 300, speed: 2.5, orbit: 80, trail: 0.07,
+    colors: [[255,180,60],[255,140,40],[255,220,80],[255,160,50]],
+    connections: false, particleAlpha: 0.8, sizeRange: [1.5, 4],
+    bursts: true, labelColor: '#ddaa44'
+  },
+  PLANNING: {
+    count: 200, speed: 0.3, orbit: 160, trail: 0.03,
+    colors: [[80,240,200],[60,220,180],[100,255,220],[50,200,190]],
+    connections: true, particleAlpha: 0.7, sizeRange: [2, 3.5],
+    geometric: true, labelColor: '#44ccaa'
+  },
+  DELEGATING: {
+    count: 250, speed: 1.0, orbit: 100, trail: 0.05,
+    colors: [[200,120,255],[255,100,200],[180,140,255],[255,130,220]],
+    connections: false, particleAlpha: 0.7, sizeRange: [1.5, 3],
+    subOrbs: true, labelColor: '#bb66ee'
+  },
+  COMPLETE: {
+    count: 300, speed: 0.1, orbit: 180, trail: 0.02,
+    colors: [[255,255,240],[255,230,150],[255,245,200],[240,220,120]],
+    connections: false, particleAlpha: 0.9, sizeRange: [2, 4],
+    crystallize: true, labelColor: '#ddcc77'
+  }
+};
+
+// Pre-compute HSL versions of all state colors
+const STATE_COLORS_HSL = {};
+for (const [state, cfg] of Object.entries(STATE_CONFIGS)) {
+  STATE_COLORS_HSL[state] = cfg.colors.map(c => rgbToHsl(c[0], c[1], c[2]));
+}
+
+const STATE_DOT_COLORS = {
+  OFF: '#333', IDLE: '#5599bb', RECEIVING: '#aabbdd', THINKING: '#9977dd',
+  WORKING: '#ddaa44', PLANNING: '#44ccaa', DELEGATING: '#bb66ee', COMPLETE: '#ddcc77'
+};
+
+// --- Canvas setup ---
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let W, H, cx, cy;
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cx = W / 2; cy = H / 2;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// --- Particle system ---
+let particles = [];
+let currentState = 'OFF';
+let prevState = 'OFF';
+let transitionProgress = 1;
+let transitionStart = 0;
+let transitionDuration = 500;
+let transitionEasing = EASING.enter;
+let lastTransitionTime = 0;
+
+// For effects
+let shakeX = 0, shakeY = 0;
+let shakeVx = 0, shakeVy = 0;
+let flashAlpha = 0;
+let flashScale = 0.95;
+let burstTimer = 0;
+let ripples = [];
+
+// Sub-orbs for DELEGATING
+const subOrbs = [
+  { angle: 0, dist: 180, speed: 0.008 },
+  { angle: Math.PI * 0.66, dist: 220, speed: -0.006 },
+  { angle: Math.PI * 1.33, dist: 160, speed: 0.01 },
+];
+
+// Geometric grid targets for PLANNING
+let geoTargets = [];
+function generateGeoTargets(count) {
+  geoTargets = [];
+  const cols = Math.ceil(Math.sqrt(count * (W / H)));
+  const rows = Math.ceil(count / cols);
+  const spacingX = W * 0.6 / cols;
+  const spacingY = H * 0.6 / rows;
+  const offsetX = cx - (cols - 1) * spacingX / 2;
+  const offsetY = cy - (rows - 1) * spacingY / 2;
+  for (let i = 0; i < count; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const hexOff = row % 2 === 0 ? 0 : spacingX * 0.5;
+    geoTargets.push({
+      x: offsetX + col * spacingX + hexOff,
+      y: offsetY + row * spacingY,
+      row: row
+    });
+  }
+}
+
+// Crystalline targets for COMPLETE
+let crystalTargets = [];
+function generateCrystalTargets(count) {
+  crystalTargets = [];
+  const rings = 6;
+  let placed = 0;
+  crystalTargets.push({ x: cx, y: cy });
+  placed++;
+  for (let r = 1; r <= rings && placed < count; r++) {
+    const circumference = r * 40;
+    const n = Math.min(Math.floor(circumference * 0.5), count - placed);
+    for (let i = 0; i < n && placed < count; i++) {
+      const a = (i / n) * Math.PI * 2;
+      crystalTargets.push({
+        x: cx + Math.cos(a) * r * 40,
+        y: cy + Math.sin(a) * r * 40
+      });
+      placed++;
+    }
+  }
+}
+
+function createParticle(i, total, entering) {
+  const cfg = STATE_CONFIGS[currentState];
+  const angle = (i / total) * Math.PI * 2 + Math.random() * 0.5;
+  const r = cfg.orbit ? cfg.orbit * (0.5 + Math.random() * 0.8) : Math.random() * 200;
+  const color = cfg.colors[Math.floor(Math.random() * cfg.colors.length)];
+  const colorHSL = rgbToHsl(color[0], color[1], color[2]);
+
+  const p = {
+    x: cx + Math.cos(angle) * r,
+    y: cy + Math.sin(angle) * r,
+    vx: (Math.random() - 0.5) * cfg.speed,
+    vy: (Math.random() - 0.5) * cfg.speed,
+    size: cfg.sizeRange[0] + Math.random() * (cfg.sizeRange[1] - cfg.sizeRange[0]),
+    alpha: cfg.particleAlpha * (0.5 + Math.random() * 0.5),
+    color: color,
+    colorHSL: colorHSL,
+    life: 1,
+    angle: angle,
+    radius: r,
+    radiusVel: 0,
+    baseAngle: angle,
+    orbitSpeed: (0.3 + Math.random() * 0.7) * (Math.random() < 0.5 ? 1 : -1),
+    orbIndex: i % 4 === 0 ? Math.floor(Math.random() * subOrbs.length) : -1,
+    scale: 1,
+    // Stagger fields (set during transition)
+    staggerDelay: 0,
+    particleTransitionStart: 0,
+    particleTransitionDuration: 0,
+    particleEasing: null,
+    sourceColor: null,
+    sourceColorHSL: null,
+    sourceAlpha: 0,
+    sourceSize: 0,
+    // Enter/exit choreography
+    entering: false,
+    exiting: false,
+    enterStart: 0,
+    exitStart: 0,
+  };
+
+  // Step 4: enter choreography
+  if (entering) {
+    p.scale = 0.85;
+    p.alpha = 0;
+    p.entering = true;
+    p.enterStart = performance.now() + i * 3; // 3ms stagger
+  }
+
+  return p;
+}
+
+// ============================================================
+// STEP 3 & 4: Staggered Particle Transitions & Enter/Exit
+// ============================================================
+
+function getStaggerDelay(p, state, i, total) {
+  const dx = p.x - cx;
+  const dy = p.y - cy;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const maxDist = Math.max(W, H) * 0.5;
+  const normalizedDist = Math.min(dist / maxDist, 1);
+
+  if (state === 'RECEIVING') {
+    // Outer-first (inward collapse wave)
+    return (1 - normalizedDist) * 200;
+  } else if (state === 'PLANNING') {
+    // Row-by-row matching hex grid
+    const target = geoTargets[i % geoTargets.length];
+    return target ? (target.row / 20) * 200 : normalizedDist * 200;
+  } else if (state === 'COMPLETE') {
+    // Center-out spiral
+    return normalizedDist * 200;
+  } else {
+    // Distance-from-center, center-first
+    return normalizedDist * 200;
+  }
+}
+
+function ensureParticlesAnimated(count) {
+  const now = performance.now();
+
+  if (particles.length < count) {
+    // Add new particles with enter choreography
+    const startIdx = particles.length;
+    while (particles.length < count) {
+      const p = createParticle(particles.length, count, true);
+      p.enterStart = now + (particles.length - startIdx) * 3;
+      particles.push(p);
+    }
+  } else if (particles.length > count) {
+    // Mark excess particles for exit
+    const excess = particles.length - count;
+    for (let i = 0; i < excess; i++) {
+      const idx = particles.length - 1 - i;
+      const p = particles[idx];
+      if (!p.exiting) {
+        p.exiting = true;
+        p.exitStart = now + i * 3;
+      }
+    }
+  }
+}
+
+// --- State transition ---
+function transitionTo(newState) {
+  if (newState === currentState && transitionProgress >= 1) return;
+
+  const now = performance.now();
+  lastTransitionTime = now;
+
+  prevState = currentState;
+  currentState = newState;
+  transitionProgress = 0;
+  transitionStart = now;
+
+  // Step 2: asymmetric timing
+  transitionDuration = TRANSITION_TIMING[newState].enter;
+  transitionEasing = getTransitionEasing(prevState, newState);
+
+  const cfg = STATE_CONFIGS[newState];
+  const effectiveCount = reducedMotion ? Math.ceil(cfg.count * 0.5) : cfg.count;
+
+  ensureParticlesAnimated(effectiveCount);
+
+  if (newState === 'PLANNING') generateGeoTargets(effectiveCount);
+  if (newState === 'COMPLETE') generateCrystalTargets(effectiveCount);
+
+  // Flash on RECEIVING (reduced for Step 6)
+  if (newState === 'RECEIVING' && !reducedMotion) {
+    flashAlpha = 0.35;
+    flashScale = 0.95;
+    // Double ring ripples
+    const stateColor = cfg.colors[0];
+    ripples.push({ x: cx, y: cy, radius: 0, alpha: 0.8, color: stateColor, strokeWidth: 2 });
+    setTimeout(() => {
+      ripples.push({ x: cx, y: cy, radius: 0, alpha: 0.6, color: stateColor, strokeWidth: 2 });
+    }, 80);
+  }
+
+  // Step 3: Set per-particle stagger and snapshot source values
+  particles.forEach((p, i) => {
+    if (p.exiting) return;
+
+    // Snapshot source values
+    p.sourceColor = p.color.slice();
+    p.sourceColorHSL = p.colorHSL ? p.colorHSL.slice() : rgbToHsl(p.color[0], p.color[1], p.color[2]);
+    p.sourceAlpha = p.alpha;
+    p.sourceSize = p.size;
+
+    // New targets
+    const targetColorRGB = cfg.colors[Math.floor(Math.random() * cfg.colors.length)];
+    p.targetColor = targetColorRGB;
+    p.targetColorHSL = rgbToHsl(targetColorRGB[0], targetColorRGB[1], targetColorRGB[2]);
+    p.targetAlpha = cfg.particleAlpha * (0.5 + Math.random() * 0.5);
+    p.targetSize = cfg.sizeRange[0] + Math.random() * (cfg.sizeRange[1] - cfg.sizeRange[0]);
+
+    // Per-particle stagger
+    p.staggerDelay = getStaggerDelay(p, newState, i, particles.length);
+    p.particleTransitionStart = now + p.staggerDelay;
+    p.particleTransitionDuration = transitionDuration * (0.8 + Math.random() * 0.4); // ±20%
+    p.particleEasing = transitionEasing;
+  });
+
+  // Step 7: Animate state label
+  animateStateLabel(newState, cfg.labelColor);
+}
+
+// ============================================================
+// STEP 7: Overlay UI Animations
+// ============================================================
+
+let labelAnimating = false;
+function animateStateLabel(newState, newColor) {
+  const stateLabel = document.getElementById('state-label');
+  if (labelAnimating) {
+    // Skip animation if already animating
+    stateLabel.textContent = newState;
+    stateLabel.style.color = newColor;
+    return;
+  }
+  labelAnimating = true;
+  stateLabel.classList.add('animating-out');
+  setTimeout(() => {
+    stateLabel.textContent = newState;
+    stateLabel.style.color = newColor;
+    stateLabel.classList.remove('animating-out');
+    labelAnimating = false;
+  }, 150);
+}
+
+function animateToolLabel(text) {
+  const toolLabel = document.getElementById('tool-label');
+  if (text) {
+    toolLabel.classList.remove('visible');
+    setTimeout(() => {
+      toolLabel.textContent = text;
+      toolLabel.classList.add('visible');
+    }, 100);
+  } else {
+    toolLabel.classList.remove('visible');
+    setTimeout(() => { toolLabel.textContent = ''; }, 400);
+  }
+}
+
+function animateTimelineDots(history) {
+  const timeline = document.getElementById('timeline');
+  timeline.innerHTML = '';
+  history.slice(-20).forEach((h, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    dot.style.backgroundColor = STATE_DOT_COLORS[h.state] || '#555';
+    dot.title = `${h.state} ${h.tool || ''}`;
+    timeline.appendChild(dot);
+    setTimeout(() => { dot.classList.add('visible'); }, i * 30);
+  });
+}
+
+// ============================================================
+// STEP 5, 6, 8: Update & Render
+// ============================================================
+
+let lastTime = performance.now();
+let time = 0;
+
+function update(now) {
+  const dt = Math.min((now - lastTime) / 1000, 0.05);
+  lastTime = now;
+  time += dt;
+
+  // Global transition progress
+  if (transitionProgress < 1) {
+    transitionProgress = Math.min(1, (now - transitionStart) / transitionDuration);
+  }
+
+  const cfg = STATE_CONFIGS[currentState];
+  const spring = SPRING_PRESETS[currentState];
+
+  // Step 6: Spring-driven shake decay
+  if (reducedMotion) {
+    shakeX = 0; shakeY = 0;
+  } else {
+    const shakeResult = springStep(shakeX, 0, shakeVx, { stiffness: 300, damping: 25, mass: 1 });
+    shakeX = shakeResult.position; shakeVx = shakeResult.velocity;
+    const shakeResultY = springStep(shakeY, 0, shakeVy, { stiffness: 300, damping: 25, mass: 1 });
+    shakeY = shakeResultY.position; shakeVy = shakeResultY.velocity;
+  }
+
+  // Flash decay (Step 6: faster decay)
+  if (reducedMotion) {
+    flashAlpha = 0;
+  } else {
+    flashAlpha *= 0.88;
+    flashScale += (1 - flashScale) * 0.15;
+  }
+
+  // Burst timer for WORKING (Step 6: staggered waves)
+  burstTimer += dt;
+  if (cfg.bursts && burstTimer > 0.5 && !reducedMotion) {
+    burstTimer = 0;
+    const effectiveCount = reducedMotion ? Math.ceil(cfg.count * 0.5) : cfg.count;
+    // 3 staggered waves
+    for (let wave = 0; wave < 3; wave++) {
+      setTimeout(() => {
+        const goldenAngle = 2.399963; // ~137.5 degrees
+        const particlesPerWave = 5;
+        const waveSpeed = 2 + wave * 1.5;
+        for (let i = 0; i < particlesPerWave; i++) {
+          const a = i * goldenAngle + wave * 0.5;
+          const speed = waveSpeed + Math.random() * 2;
+          if (particles.length < effectiveCount + 30) {
+            const p = createParticle(0, 1, false);
+            p.x = cx; p.y = cy;
+            p.vx = Math.cos(a) * speed;
+            p.vy = Math.sin(a) * speed;
+            p.life = 1;
+            p.burst = true;
+            p.scale = 0.9;
+            particles.push(p);
+          }
+        }
+      }, wave * 60);
+    }
+    shakeVx += (Math.random() - 0.5) * 200;
+    shakeVy += (Math.random() - 0.5) * 200;
+
+    // State-colored ripple
+    const rippleColor = cfg.colors[0];
+    ripples.push({ x: cx, y: cy, radius: 0, alpha: 0.5, color: rippleColor, strokeWidth: 2 });
+  }
+
+  // Update ripples (Step 6: eased expansion, stroke fade)
+  if (!reducedMotion) {
+    ripples = ripples.filter(r => {
+      // Ease-out expansion (fast start)
+      const expandSpeed = 300 + r.radius * 0.5;
+      r.radius += expandSpeed * dt;
+      r.alpha *= 0.95;
+      r.strokeWidth = Math.max(0, r.strokeWidth - dt * 4);
+      return r.alpha > 0.01 && r.strokeWidth > 0.01;
+    });
+  } else {
+    ripples = [];
+  }
+
+  // Breathing for IDLE
+  const breathe = cfg.breathe ? Math.sin(time * 1.2) * 30 : 0;
+
+  // Remove exited particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+
+    // Step 4: Enter choreography
+    if (p.entering) {
+      const enterProgress = Math.min(1, (now - p.enterStart) / 350);
+      if (enterProgress >= 0 && enterProgress < 1) {
+        const ep = EASING.enter(Math.max(0, enterProgress));
+        p.scale = 0.85 + 0.15 * ep;
+        // Don't override alpha for entering particles until enter is done
+        if (enterProgress > 0) {
+          const targetA = STATE_CONFIGS[currentState].particleAlpha * (0.5 + Math.random() * 0.5);
+          p.alpha = p.targetAlpha !== undefined ? p.targetAlpha * ep : targetA * ep;
+        }
+      } else if (enterProgress >= 1) {
+        p.entering = false;
+        p.scale = 1;
+      }
+    }
+
+    // Step 4: Exit choreography
+    if (p.exiting) {
+      const exitProgress = Math.min(1, (now - p.exitStart) / 250);
+      if (exitProgress >= 0) {
+        const ep = EASING.exit(Math.max(0, exitProgress));
+        p.scale = 1 - 0.15 * ep;
+        p.alpha *= (1 - ep);
+      }
+      if (exitProgress >= 1) {
+        particles.splice(i, 1);
+        continue;
+      }
+    }
+
+    // Step 3: Per-particle transition progress
+    let pt = 1; // particle's own transition progress
+    if (p.particleTransitionStart && p.particleTransitionDuration) {
+      const elapsed = now - p.particleTransitionStart;
+      if (elapsed < 0) {
+        pt = 0;
+      } else {
+        pt = Math.min(1, elapsed / p.particleTransitionDuration);
+      }
+      if (p.particleEasing) pt = p.particleEasing(pt);
+    }
+
+    // Interpolate color/alpha/size using HSL (Step 1) with per-particle progress (Step 3)
+    if (p.targetColorHSL && p.sourceColorHSL && pt < 1 && !p.entering) {
+      if (reducedMotion) {
+        // Direct lerp for reduced motion
+        p.color = [
+          Math.round(p.sourceColor[0] + (p.targetColor[0] - p.sourceColor[0]) * pt),
+          Math.round(p.sourceColor[1] + (p.targetColor[1] - p.sourceColor[1]) * pt),
+          Math.round(p.sourceColor[2] + (p.targetColor[2] - p.sourceColor[2]) * pt),
+        ];
+      } else {
+        const hsl = lerpColorHSL(p.sourceColorHSL, p.targetColorHSL, pt);
+        p.color = hslToRgb(hsl[0], hsl[1], hsl[2]);
+      }
+      p.colorHSL = rgbToHsl(p.color[0], p.color[1], p.color[2]);
+    } else if (p.targetColor && pt >= 1) {
+      p.color = p.targetColor;
+      p.colorHSL = p.targetColorHSL;
+      p.targetColor = null;
+      p.targetColorHSL = null;
+      p.sourceColor = null;
+      p.sourceColorHSL = null;
+    }
+
+    if (p.targetAlpha !== undefined && p.sourceAlpha !== undefined && !p.entering) {
+      p.alpha = p.sourceAlpha + (p.targetAlpha - p.sourceAlpha) * pt;
+    }
+    if (p.targetSize !== undefined && p.sourceSize !== undefined) {
+      p.size = p.sourceSize + (p.targetSize - p.sourceSize) * pt;
+    }
+
+    // Burst particles decay
+    if (p.burst) {
+      p.life -= dt * 1.5;
+      p.alpha = p.life * 0.8;
+      p.scale += (0 - p.scale) * 0.02;
+      if (p.life <= 0) { particles.splice(i, 1); continue; }
+    }
+
+    // Step 5: Spring-driven particle motion per state
+    if (currentState === 'OFF') {
+      p.vx += (Math.random() - 0.5) * 0.01;
+      p.vy += (Math.random() - 0.5) * 0.01;
+      p.vx *= 0.99; p.vy *= 0.99;
+
+    } else if (currentState === 'IDLE') {
+      p.angle += p.orbitSpeed * cfg.speed * dt;
+      const targetR = cfg.orbit + breathe + Math.sin(p.baseAngle * 3) * 20;
+      // Spring-driven radius
+      if (reducedMotion) {
+        p.radius += (targetR - p.radius) * 0.02;
+      } else {
+        const rSpring = springStep(p.radius, targetR, p.radiusVel || 0, spring);
+        p.radius = rSpring.position;
+        p.radiusVel = rSpring.velocity;
+      }
+      const tx = cx + Math.cos(p.angle) * p.radius;
+      const ty = cy + Math.sin(p.angle) * p.radius;
+      const sx = springStep(p.x, tx, p.vx, spring);
+      const sy = springStep(p.y, ty, p.vy, spring);
+      p.vx = sx.velocity; p.vy = sy.velocity;
+      p.x = sx.position; p.y = sy.position;
+      continue; // skip p.x += p.vx below
+
+    } else if (currentState === 'RECEIVING') {
+      const dx = cx - p.x, dy = cy - p.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      p.vx += (dx / dist) * cfg.speed * 0.5;
+      p.vy += (dy / dist) * cfg.speed * 0.5;
+      p.vx *= 0.95; p.vy *= 0.95;
+
+    } else if (currentState === 'THINKING') {
+      p.angle += p.orbitSpeed * cfg.speed * dt * 1.5;
+      const tr = cfg.orbit * (0.6 + Math.sin(time * 2 + p.baseAngle) * 0.4);
+      const tx = cx + Math.cos(p.angle) * tr;
+      const ty = cy + Math.sin(p.angle) * tr;
+      if (reducedMotion) {
+        p.vx += (tx - p.x) * 0.02;
+        p.vy += (ty - p.y) * 0.02;
+        p.vx *= 0.95; p.vy *= 0.95;
+      } else {
+        const sx = springStep(p.x, tx, p.vx, spring);
+        const sy = springStep(p.y, ty, p.vy, spring);
+        p.vx = sx.velocity; p.vy = sy.velocity;
+        p.x = sx.position; p.y = sy.position;
+        continue;
+      }
+
+    } else if (currentState === 'WORKING') {
+      p.angle += p.orbitSpeed * cfg.speed * dt;
+      const tr = cfg.orbit + Math.sin(time * 4 + p.baseAngle * 2) * 40;
+      const tx = cx + Math.cos(p.angle) * tr;
+      const ty = cy + Math.sin(p.angle) * tr;
+      if (reducedMotion) {
+        p.vx += (tx - p.x) * 0.015;
+        p.vy += (ty - p.y) * 0.015;
+        p.vx *= 0.96; p.vy *= 0.96;
+      } else {
+        const sx = springStep(p.x, tx, p.vx, spring);
+        const sy = springStep(p.y, ty, p.vy, spring);
+        p.vx = sx.velocity; p.vy = sy.velocity;
+        p.x = sx.position; p.y = sy.position;
+        continue;
+      }
+
+    } else if (currentState === 'PLANNING') {
+      const target = geoTargets[i % geoTargets.length];
+      if (target) {
+        const rot = time * 0.1;
+        const rx = cx + (target.x - cx) * Math.cos(rot) - (target.y - cy) * Math.sin(rot);
+        const ry = cy + (target.x - cx) * Math.sin(rot) + (target.y - cy) * Math.cos(rot);
+        if (reducedMotion) {
+          p.vx += (rx - p.x) * 0.03;
+          p.vy += (ry - p.y) * 0.03;
+          p.vx *= 0.9; p.vy *= 0.9;
+        } else {
+          const sx = springStep(p.x, rx, p.vx, spring);
+          const sy = springStep(p.y, ry, p.vy, spring);
+          p.vx = sx.velocity; p.vy = sy.velocity;
+          p.x = sx.position; p.y = sy.position;
+          continue;
+        }
+      } else {
+        p.vx *= 0.9; p.vy *= 0.9;
+      }
+
+    } else if (currentState === 'DELEGATING') {
+      if (p.orbIndex >= 0 && p.orbIndex < subOrbs.length) {
+        const orb = subOrbs[p.orbIndex];
+        orb.angle += orb.speed;
+        const ox = cx + Math.cos(orb.angle) * orb.dist;
+        const oy = cy + Math.sin(orb.angle) * orb.dist;
+        p.angle += p.orbitSpeed * 0.02;
+        const tx = ox + Math.cos(p.angle) * 30;
+        const ty = oy + Math.sin(p.angle) * 30;
+        if (reducedMotion) {
+          p.vx += (tx - p.x) * 0.04;
+          p.vy += (ty - p.y) * 0.04;
+        } else {
+          const sx = springStep(p.x, tx, p.vx, spring);
+          const sy = springStep(p.y, ty, p.vy, spring);
+          p.vx = sx.velocity; p.vy = sy.velocity;
+          p.x = sx.position; p.y = sy.position;
+        }
+      } else {
+        p.angle += p.orbitSpeed * cfg.speed * dt;
+        const tx = cx + Math.cos(p.angle) * cfg.orbit;
+        const ty = cy + Math.sin(p.angle) * cfg.orbit;
+        if (reducedMotion) {
+          p.vx += (tx - p.x) * 0.02;
+          p.vy += (ty - p.y) * 0.02;
+        } else {
+          const sx = springStep(p.x, tx, p.vx, spring);
+          const sy = springStep(p.y, ty, p.vy, spring);
+          p.vx = sx.velocity; p.vy = sy.velocity;
+          p.x = sx.position; p.y = sy.position;
+        }
+      }
+      if (reducedMotion) { p.vx *= 0.94; p.vy *= 0.94; }
+      else { continue; }
+
+    } else if (currentState === 'COMPLETE') {
+      const target = crystalTargets[i % crystalTargets.length];
+      if (target) {
+        if (reducedMotion) {
+          p.vx += (target.x - p.x) * 0.05;
+          p.vy += (target.y - p.y) * 0.05;
+          p.vx *= 0.85; p.vy *= 0.85;
+        } else {
+          const sx = springStep(p.x, target.x, p.vx, spring);
+          const sy = springStep(p.y, target.y, p.vy, spring);
+          p.vx = sx.velocity; p.vy = sy.velocity;
+          p.x = sx.position; p.y = sy.position;
+          continue;
+        }
+      }
+    }
+
+    p.x += p.vx;
+    p.y += p.vy;
+
+    // Soft boundary
+    if (p.x < -50) p.x = W + 50;
+    if (p.x > W + 50) p.x = -50;
+    if (p.y < -50) p.y = H + 50;
+    if (p.y > H + 50) p.y = -50;
+  }
+}
+
+// --- Render ---
+function render(now) {
+  const cfg = STATE_CONFIGS[currentState];
+  const frameStart = performance.now();
+
+  // Trail effect
+  ctx.save();
+  ctx.globalAlpha = reducedMotion ? cfg.trail * 2 : cfg.trail;
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+
+  // Step 8: Canvas blur during transitions
+  let blurApplied = false;
+  const frameBudgetOk = true; // will check after first frame
+  if (!reducedMotion && transitionProgress < 0.3 && transitionProgress > 0 && frameBudgetOk) {
+    const blurProgress = transitionProgress / 0.3; // 0 → 1 over first 30%
+    const timeSinceLast = now - lastTransitionTime;
+    const isRapid = timeSinceLast < 600;
+    const maxBlur = isRapid ? 2.5 : 1.5;
+    const blurAmount = maxBlur * (1 - EASING.enter(blurProgress));
+    if (blurAmount > 0.1) {
+      ctx.filter = `blur(${blurAmount.toFixed(1)}px)`;
+      blurApplied = true;
+    }
+  }
+
+  ctx.save();
+  ctx.translate(shakeX, shakeY);
+
+  // Connection lines (THINKING, PLANNING)
+  if (cfg.connections && !reducedMotion) {
+    const maxDist = 80;
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < maxDist * maxDist) {
+          const d = Math.sqrt(d2);
+          const alpha = (1 - d / maxDist) * 0.3;
+          const c = particles[i].color;
+          ctx.strokeStyle = `rgba(${c[0]},${c[1]},${c[2]},${alpha})`;
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  // Particles (Step 4: use p.scale)
+  for (const p of particles) {
+    ctx.globalAlpha = p.alpha;
+    ctx.fillStyle = `rgb(${p.color[0]},${p.color[1]},${p.color[2]})`;
+    const renderSize = p.size * (p.scale || 1);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, renderSize, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Glow for larger particles
+    if (renderSize > 2.5) {
+      ctx.globalAlpha = p.alpha * 0.2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, renderSize * 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.restore();
+
+  // Reset filter before overlay effects (Step 8)
+  if (blurApplied) {
+    ctx.filter = 'none';
+  }
+
+  // Ripples (Step 6: colored, stroke width fades)
+  if (!reducedMotion) {
+    for (const r of ripples) {
+      ctx.globalAlpha = r.alpha;
+      const c = r.color || [255, 255, 255];
+      ctx.strokeStyle = `rgba(${c[0]},${c[1]},${c[2]},${r.alpha})`;
+      ctx.lineWidth = r.strokeWidth || 2;
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  // Flash (Step 6: radial gradient, scale from 0.95)
+  if (flashAlpha > 0.01 && !reducedMotion) {
+    ctx.globalAlpha = flashAlpha;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.5 * flashScale);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,0.3)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // Center glow
+  if (currentState !== 'OFF') {
+    const glowAlpha = currentState === 'COMPLETE'
+      ? 0.15 + Math.sin(time * 2) * 0.1
+      : 0.08;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 200);
+    const c = cfg.colors[0];
+    grad.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},${glowAlpha})`);
+    grad.addColorStop(1, 'rgba(10,10,15,0)');
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // Sub-orb glow for DELEGATING
+  if (currentState === 'DELEGATING') {
+    for (const orb of subOrbs) {
+      const ox = cx + Math.cos(orb.angle) * orb.dist;
+      const oy = cy + Math.sin(orb.angle) * orb.dist;
+      const grad = ctx.createRadialGradient(ox, oy, 0, ox, oy, 50);
+      grad.addColorStop(0, 'rgba(200,120,255,0.15)');
+      grad.addColorStop(1, 'rgba(10,10,15,0)');
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = grad;
+      ctx.fillRect(ox - 60, oy - 60, 120, 120);
+    }
+  }
+}
+
+// --- Animation loop ---
+function frame(now) {
+  update(now);
+  render(now);
+  requestAnimationFrame(frame);
+}
+
+// Init particles for OFF state
+ensureParticlesAnimated(STATE_CONFIGS.OFF.count);
+requestAnimationFrame(frame);
+
+// --- WebSocket ---
+let ws;
+let reconnectTimer;
+
+function updateSessionCount(count) {
+  const el = document.getElementById('session-count');
+  if (count > 1) {
+    el.textContent = count + ' sessions';
+    el.classList.add('active');
+  } else if (count === 1) {
+    el.textContent = '1 session';
+    el.classList.add('active');
+  } else {
+    el.classList.remove('active');
+  }
+}
+
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}`);
+  const statusEl = document.getElementById('connection-status');
+
+  ws.onopen = () => {
+    statusEl.textContent = 'connected';
+    statusEl.style.opacity = '0.3';
+  };
+
+  ws.onmessage = (evt) => {
+    try {
+      const data = JSON.parse(evt.data);
+      if (data.state && data.state !== currentState) {
+        transitionTo(data.state);
+      }
+      // Multi-session tool label
+      if (data.sessionTools && data.sessionTools.length > 1) {
+        animateToolLabel(data.sessionTools.slice(0, 3).join('  |  '));
+      } else if (data.tool) {
+        const summary = data.toolSummary ? ` — ${data.toolSummary}` : '';
+        animateToolLabel(`${data.tool}${summary}`);
+      } else {
+        animateToolLabel('');
+      }
+      // Update timeline with staggered dots
+      if (data.history) {
+        animateTimelineDots(data.history);
+      }
+      // Session count
+      updateSessionCount(data.activeSessionCount || 0);
+    } catch (e) {
+      console.error('WS parse error:', e);
+    }
+  };
+
+  ws.onclose = () => {
+    statusEl.textContent = 'disconnected';
+    statusEl.style.opacity = '0.5';
+    reconnectTimer = setTimeout(connect, 2000);
+  };
+
+  ws.onerror = () => ws.close();
+}
+
+connect();
+</script>
+</body>
+</html>
