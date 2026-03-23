@@ -360,6 +360,8 @@ let transitionStart = 0;
 let transitionDuration = 500;
 let transitionEasing = EASING.enter;
 let lastTransitionTime = 0;
+let queuedState = null;   // latest state waiting to fire after current transition
+let queuedData = null;    // overlay data snapshot paired with queuedState
 
 // For effects
 let shakeX = 0, shakeY = 0;
@@ -674,6 +676,16 @@ function update(now) {
   // Global transition progress
   if (transitionProgress < 1) {
     transitionProgress = Math.min(1, (now - transitionStart) / transitionDuration);
+  }
+
+  // Flush queued state once current transition + max stagger window has elapsed
+  if (queuedState && now >= transitionStart + transitionDuration + 200) {
+    const nextState = queuedState;
+    const nextData  = queuedData;
+    queuedState = null;
+    queuedData  = null;
+    transitionTo(nextState);
+    if (nextData) applyOverlayData(nextData);
   }
 
   const cfg = STATE_CONFIGS[currentState];
@@ -1154,6 +1166,21 @@ function updateSessionCount(count) {
   }
 }
 
+// Apply overlay UI updates (tool label, timeline, session count).
+// Called immediately for non-state data, or deferred alongside a queued state.
+function applyOverlayData(data) {
+  if (data.sessionTools && data.sessionTools.length > 1) {
+    animateToolLabel(data.sessionTools.slice(0, 3).join('  |  '));
+  } else if (data.tool) {
+    const summary = data.toolSummary ? ` — ${data.toolSummary}` : '';
+    animateToolLabel(`${data.tool}${summary}`);
+  } else {
+    animateToolLabel('');
+  }
+  if (data.history) animateTimelineDots(data.history);
+  updateSessionCount(data.activeSessionCount || 0);
+}
+
 function connect() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(`${proto}//${location.host}`);
@@ -1168,23 +1195,20 @@ function connect() {
     try {
       const data = JSON.parse(evt.data);
       if (data.state && data.state !== currentState) {
-        transitionTo(data.state);
-      }
-      // Multi-session tool label
-      if (data.sessionTools && data.sessionTools.length > 1) {
-        animateToolLabel(data.sessionTools.slice(0, 3).join('  |  '));
-      } else if (data.tool) {
-        const summary = data.toolSummary ? ` — ${data.toolSummary}` : '';
-        animateToolLabel(`${data.tool}${summary}`);
+        const now = performance.now();
+        const transitionEnd = transitionStart + transitionDuration + 200;
+        if (now < transitionEnd) {
+          // Transition still running — hold latest state; overlay updates travel with it
+          queuedState = data.state;
+          queuedData  = data;
+        } else {
+          transitionTo(data.state);
+          applyOverlayData(data);
+        }
       } else {
-        animateToolLabel('');
+        // No state change — overlay updates (tool label, timeline) apply immediately
+        applyOverlayData(data);
       }
-      // Update timeline with staggered dots
-      if (data.history) {
-        animateTimelineDots(data.history);
-      }
-      // Session count
-      updateSessionCount(data.activeSessionCount || 0);
     } catch (e) {
       console.error('WS parse error:', e);
     }
