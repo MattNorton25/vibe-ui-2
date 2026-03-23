@@ -854,11 +854,19 @@ function update(now) {
       continue; // skip p.x += p.vx below
 
     } else if (currentState === 'RECEIVING') {
-      const dx = cx - p.x, dy = cy - p.y;
-      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-      p.vx += (dx / dist) * cfg.speed * 0.5;
-      p.vy += (dy / dist) * cfg.speed * 0.5;
-      p.vx *= 0.95; p.vy *= 0.95;
+      if (reducedMotion) {
+        const dx = cx - p.x, dy = cy - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        p.vx += (dx / dist) * cfg.speed * 0.5;
+        p.vy += (dy / dist) * cfg.speed * 0.5;
+        p.vx *= 0.95; p.vy *= 0.95;
+      } else {
+        const sx = springStep(p.x, cx, p.vx, spring);
+        const sy = springStep(p.y, cy, p.vy, spring);
+        p.vx = sx.velocity; p.vy = sy.velocity;
+        p.x = sx.position; p.y = sy.position;
+        continue;
+      }
 
     } else if (currentState === 'THINKING') {
       p.angle += p.orbitSpeed * cfg.speed * dt * 1.5;
