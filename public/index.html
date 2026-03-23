@@ -596,6 +596,13 @@ function transitionTo(newState) {
     p.particleTransitionStart = now + p.staggerDelay;
     p.particleTransitionDuration = transitionDuration * (0.8 + Math.random() * 0.4); // ±20%
     p.particleEasing = transitionEasing;
+
+    // Bleed off residual velocity so the new state's spring starts clean.
+    // Without this, underdamped states (THINKING) pass oscillatory momentum
+    // into the next state, causing it to fight the new spring for several frames.
+    p.vx *= 0.25;
+    p.vy *= 0.25;
+    p.radiusVel = (p.radiusVel || 0) * 0.25;
   });
 
   // Step 7: Animate state label
