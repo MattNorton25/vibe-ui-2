@@ -1,11 +1,29 @@
 {
-  "name": "claude-pulse",
+  "name": "@mattnorton/claude-pulse",
   "version": "1.0.0",
   "description": "Real-time Claude Code agent activity visualizer",
   "main": "server.js",
+  "bin": {
+    "claude-pulse": "./bin/claude-pulse.js"
+  },
+  "files": [
+    "bin/",
+    "public/",
+    "server.js"
+  ],
   "scripts": {
     "start": "node server.js"
   },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "ai",
+    "visualization",
+    "dashboard",
+    "hooks"
+  ],
+  "author": "mattnorton",
+  "license": "MIT",
   "dependencies": {
     "express": "^4.21.0",
     "ws": "^8.18.0"

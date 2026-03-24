@@ -34,6 +34,21 @@ Transitions use spring physics, HSL color interpolation (no muddy midpoints), pe
 
 ## Installation
 
+### Global install (recommended)
+
+```bash
+npm install -g @mattnorton/claude-pulse
+claude-pulse
+```
+
+### One-time run with npx
+
+```bash
+npx @mattnorton/claude-pulse
+```
+
+### From source
+
 ```bash
 git clone https://github.com/MattNorton25/vibe-ui-2.git claude-pulse
 cd claude-pulse
@@ -147,9 +162,11 @@ Respects `prefers-reduced-motion`: disables flash, shake, bursts, ripples, canva
 
 ```
 claude-pulse/
-├── server.js          # Express + WebSocket server, state machine, session manager
+├── bin/
+│   └── claude-pulse.js  # CLI entrypoint (npm global / npx)
 ├── public/
-│   └── index.html     # Canvas renderer, particle system, overlay UI
+│   └── index.html       # Canvas renderer, particle system, overlay UI
+├── server.js            # Express + WebSocket server, state machine, session manager
 └── package.json
 ```
 
