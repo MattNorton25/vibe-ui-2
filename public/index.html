@@ -111,6 +111,121 @@
       transition-duration: 100ms !important;
     }
   }
+
+  /* Settings */
+  #settings-btn {
+    position: fixed;
+    top: 12px; right: 16px;
+    background: none; border: none;
+    color: rgba(255,255,255,0.25);
+    font-size: 15px; cursor: pointer;
+    z-index: 30; padding: 4px 6px;
+    transition: color 200ms;
+    font-family: inherit; line-height: 1;
+  }
+  #settings-btn:hover { color: rgba(255,255,255,0.6); }
+  #settings-btn.active { color: rgba(255,255,255,0.7); }
+
+  #settings-panel {
+    position: fixed;
+    top: 0; right: 0;
+    width: 272px; height: 100vh;
+    background: rgba(8, 8, 13, 0.97);
+    border-left: 1px solid rgba(255,255,255,0.07);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    z-index: 25;
+    transform: translateX(100%);
+    transition: transform 380ms cubic-bezier(0.23, 1, 0.32, 1);
+    overflow-y: auto; overflow-x: hidden;
+    display: flex; flex-direction: column;
+  }
+  #settings-panel.open { transform: translateX(0); }
+  #settings-panel::-webkit-scrollbar { width: 3px; }
+  #settings-panel::-webkit-scrollbar-track { background: transparent; }
+  #settings-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+  .sp-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+  }
+  .sp-header-title {
+    font-size: 9px; letter-spacing: 3px;
+    color: rgba(255,255,255,0.35); text-transform: uppercase;
+  }
+  .sp-header-hint {
+    font-size: 9px; letter-spacing: 1px;
+    color: rgba(255,255,255,0.15);
+  }
+
+  .sp-group {
+    padding: 14px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .sp-group-label {
+    font-size: 8px; letter-spacing: 3px; text-transform: uppercase;
+    color: rgba(255,255,255,0.2); margin-bottom: 12px;
+  }
+  .sp-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; margin-bottom: 9px; min-height: 22px;
+  }
+  .sp-row:last-child { margin-bottom: 0; }
+  .sp-row-label {
+    font-size: 11px; color: rgba(255,255,255,0.45);
+    flex: 1; white-space: nowrap; letter-spacing: 0.3px;
+  }
+
+  /* Hz pills */
+  .hz-pills { display: flex; gap: 3px; flex-wrap: wrap; justify-content: flex-end; }
+  .hz-pill {
+    background: none; border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.3); font-size: 9px; font-family: inherit;
+    padding: 2px 6px; cursor: pointer; border-radius: 2px;
+    transition: all 140ms; letter-spacing: 0.5px;
+  }
+  .hz-pill:hover { border-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.6); }
+  .hz-pill.active { border-color: rgba(255,255,255,0.5); color: #fff; background: rgba(255,255,255,0.08); }
+
+  /* Toggle */
+  .sp-toggle {
+    background: none; border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.3); font-size: 8px; font-family: inherit;
+    letter-spacing: 2px; padding: 2px 8px; cursor: pointer;
+    border-radius: 2px; transition: all 140ms;
+    min-width: 38px; text-align: center;
+  }
+  .sp-toggle:hover { border-color: rgba(255,255,255,0.25); }
+  .sp-toggle.on { border-color: rgba(255,255,255,0.4); color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.06); }
+
+  /* Range sliders */
+  .sp-slider-wrap { display: flex; align-items: center; gap: 8px; flex: 1; justify-content: flex-end; min-width: 0; }
+  input[type=range].sp-range {
+    -webkit-appearance: none; appearance: none;
+    height: 2px; background: rgba(255,255,255,0.12);
+    border-radius: 1px; outline: none; width: 90px; flex-shrink: 0;
+  }
+  input[type=range].sp-range::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 9px; height: 9px;
+    background: rgba(255,255,255,0.65); border-radius: 50%; cursor: pointer;
+    transition: background 120ms;
+  }
+  input[type=range].sp-range::-webkit-slider-thumb:hover { background: #fff; }
+  input[type=range].sp-range::-moz-range-thumb {
+    width: 9px; height: 9px; background: rgba(255,255,255,0.65);
+    border-radius: 50%; cursor: pointer; border: none;
+  }
+  .sp-val {
+    font-size: 9px; color: rgba(255,255,255,0.3);
+    min-width: 28px; text-align: right; letter-spacing: 0.5px;
+  }
+  .sp-footer {
+    margin-top: auto; padding: 14px 20px;
+    font-size: 9px; color: rgba(255,255,255,0.12); letter-spacing: 1px;
+    text-align: center; flex-shrink: 0;
+  }
 </style>
 </head>
 <body>
@@ -125,7 +240,121 @@
   <div id="timeline"></div>
 </div>
 
+<button id="settings-btn" title="Settings (,)">⚙</button>
+
+<div id="settings-panel" role="dialog" aria-label="Settings">
+  <div class="sp-header">
+    <span class="sp-header-title">Settings</span>
+    <span class="sp-header-hint">press , to close</span>
+  </div>
+
+  <div class="sp-group">
+    <div class="sp-group-label">Display</div>
+    <div class="sp-row">
+      <span class="sp-row-label">Refresh rate</span>
+      <div class="hz-pills">
+        <button class="hz-pill" data-hz="60">60</button>
+        <button class="hz-pill" data-hz="75">75</button>
+        <button class="hz-pill" data-hz="120">120</button>
+        <button class="hz-pill" data-hz="144">144</button>
+        <button class="hz-pill" data-hz="165">165</button>
+        <button class="hz-pill" data-hz="240">240</button>
+      </div>
+    </div>
+    <div class="sp-row">
+      <span class="sp-row-label">Particles</span>
+      <div class="sp-slider-wrap">
+        <input type="range" class="sp-range" id="particle-scale" min="25" max="100" step="5">
+        <span class="sp-val" id="particle-scale-val">100%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sp-group">
+    <div class="sp-group-label">Audio</div>
+    <div class="sp-row">
+      <span class="sp-row-label">Sound</span>
+      <button class="sp-toggle" id="audio-mute-toggle">OFF</button>
+    </div>
+    <div class="sp-row">
+      <span class="sp-row-label">Volume</span>
+      <div class="sp-slider-wrap">
+        <input type="range" class="sp-range" id="audio-volume" min="0" max="100" step="5">
+        <span class="sp-val" id="audio-volume-val">65%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sp-group">
+    <div class="sp-group-label">Effects</div>
+    <div class="sp-row">
+      <span class="sp-row-label">Mouse gravity</span>
+      <button class="sp-toggle" id="mouse-gravity-toggle">ON</button>
+    </div>
+    <div class="sp-row">
+      <span class="sp-row-label">Gravity strength</span>
+      <div class="sp-slider-wrap">
+        <input type="range" class="sp-range" id="mouse-gravity-strength" min="25" max="200" step="5">
+        <span class="sp-val" id="mouse-gravity-strength-val">100%</span>
+      </div>
+    </div>
+    <div class="sp-row">
+      <span class="sp-row-label">Flow field</span>
+      <button class="sp-toggle" id="flow-field-toggle">ON</button>
+    </div>
+    <div class="sp-row">
+      <span class="sp-row-label">Echo afterimage</span>
+      <button class="sp-toggle" id="echo-toggle">ON</button>
+    </div>
+    <div class="sp-row">
+      <span class="sp-row-label">Chromatic aberration</span>
+      <button class="sp-toggle" id="chromatic-toggle">ON</button>
+    </div>
+  </div>
+
+  <div class="sp-group">
+    <div class="sp-group-label">Motion</div>
+    <div class="sp-row">
+      <span class="sp-row-label">Reduced motion</span>
+      <button class="sp-toggle" id="reduced-motion-toggle">AUTO</button>
+    </div>
+  </div>
+
+  <div class="sp-footer">changes saved automatically</div>
+</div>
+
 <script>
+// ============================================================
+// CONFIGURATION — persisted to localStorage
+// ============================================================
+const CONFIG_DEFAULTS = {
+  targetFps: 75,          // Monitor refresh rate: 60 | 75 | 120 | 144 | 165 | 240
+  audioMuted: false,
+  audioVolume: 0.65,      // 0–1 (maps to master gain 0–0.20)
+  particleScale: 1.0,     // 0.25–1.0: fraction of each state's full particle count
+  mouseGravity: true,
+  mouseGravityStrength: 1.0, // 0.25–2.0 multiplier on the default pull/push force
+  flowField: true,
+  echoAfterimage: true,
+  chromaticAberration: true,
+  reducedMotionOverride: null, // null = follow OS, true = always on, false = always off
+};
+
+const CONFIG = (() => {
+  try {
+    const saved = JSON.parse(localStorage.getItem('claude-pulse-config') || '{}');
+    return Object.assign({}, CONFIG_DEFAULTS, saved);
+  } catch { return Object.assign({}, CONFIG_DEFAULTS); }
+})();
+
+function saveConfig() {
+  try { localStorage.setItem('claude-pulse-config', JSON.stringify(CONFIG)); } catch {}
+}
+
+// All authored per-frame values (trail, flash decay, friction) were tuned at this rate.
+// They are normalized to CONFIG.targetFps at runtime — you only need to change targetFps.
+const BASE_FPS = 60;
+
 // ============================================================
 // STEP 1: Foundation — Easing, HSL, Springs, Accessibility
 // ============================================================
@@ -230,14 +459,15 @@ function lerpColorHSL(hslA, hslB, t) {
 }
 
 // --- Spring Physics ---
-function springStep(current, target, velocity, opts) {
+function springStep(current, target, velocity, opts, dt) {
+  dt = dt || (1/60);
   const { stiffness, damping, mass } = opts;
   const displacement = current - target;
   const springForce = -stiffness * displacement;
   const dampingForce = -damping * velocity;
   const acceleration = (springForce + dampingForce) / (mass || 1);
-  const newVelocity = velocity + acceleration * (1/60); // fixed timestep for stability
-  const newPosition = current + newVelocity * (1/60);
+  const newVelocity = velocity + acceleration * dt;
+  const newPosition = current + newVelocity * dt;
   return { position: newPosition, velocity: newVelocity };
 }
 
@@ -252,11 +482,12 @@ const SPRING_PRESETS = {
   COMPLETE:   { stiffness: 60,  damping: 18, mass: 1 },
 };
 
-// --- prefers-reduced-motion ---
-let reducedMotion = false;
+// --- prefers-reduced-motion (supports CONFIG.reducedMotionOverride) ---
 const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-reducedMotion = motionQuery.matches;
-motionQuery.addEventListener('change', (e) => { reducedMotion = e.matches; });
+let reducedMotion = CONFIG.reducedMotionOverride !== null ? CONFIG.reducedMotionOverride : motionQuery.matches;
+motionQuery.addEventListener('change', () => {
+  if (CONFIG.reducedMotionOverride === null) reducedMotion = motionQuery.matches;
+});
 
 // ============================================================
 // STEP 2: Asymmetric Transition Timing
@@ -371,6 +602,20 @@ let flashScale = 0.95;
 let burstTimer = 0;
 let ripples = [];
 
+// Mouse gravity well
+let mouseX = cx, mouseY = cy;
+document.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+
+// State echo afterimage
+let echoParticles = [];
+let echoStartTime = 0;
+const ECHO_DURATION = 420; // ms
+
+// Audio system (lazy-initialized on first user gesture)
+let audioCtx = null;
+let masterGain = null;
+let currentAudioNodes = null;
+
 // Sub-orbs for DELEGATING
 const subOrbs = [
   { angle: 0, dist: 180, speed: 0.008 },
@@ -446,6 +691,9 @@ function createParticle(i, total, entering) {
     orbitSpeed: (0.3 + Math.random() * 0.7) * (Math.random() < 0.5 ? 1 : -1),
     orbIndex: i % 4 === 0 ? Math.floor(Math.random() * subOrbs.length) : -1,
     scale: 1,
+    phase: Math.random() * Math.PI * 2,
+    phaseSpeed: 1.5 + Math.random() * 3,
+    snapped: false,
     // Stagger fields (set during transition)
     staggerDelay: 0,
     particleTransitionStart: 0,
@@ -542,12 +790,23 @@ function transitionTo(newState) {
   transitionEasing = getTransitionEasing(prevState, newState);
 
   const cfg = STATE_CONFIGS[newState];
-  const effectiveCount = reducedMotion ? Math.ceil(cfg.count * 0.5) : cfg.count;
+  const effectiveCount = Math.max(1, Math.round(cfg.count * CONFIG.particleScale * (reducedMotion ? 0.5 : 1)));
 
   ensureParticlesAnimated(effectiveCount);
 
   if (newState === 'PLANNING') generateGeoTargets(effectiveCount);
-  if (newState === 'COMPLETE') generateCrystalTargets(effectiveCount);
+  if (newState === 'COMPLETE') {
+    generateCrystalTargets(effectiveCount);
+    particles.forEach(p => { p.snapped = false; });
+  }
+
+  // Echo afterimage: snapshot current positions before they spring away
+  if (!reducedMotion && particles.length > 0) {
+    echoParticles = particles
+      .filter(p => !p.exiting && !p.entering && !p.burst)
+      .map(p => ({ x: p.x, y: p.y, color: p.color.slice(), alpha: p.alpha * 0.45, size: p.size }));
+    echoStartTime = now;
+  }
 
   // Flash on RECEIVING (reduced for Step 6)
   if (newState === 'RECEIVING' && !reducedMotion) {
@@ -609,6 +868,9 @@ function transitionTo(newState) {
 
   // Step 7: Animate state label
   animateStateLabel(newState, cfg.labelColor);
+
+  // Ambient audio
+  transitionAudio(newState);
 }
 
 // ============================================================
@@ -616,12 +878,14 @@ function transitionTo(newState) {
 // ============================================================
 
 let labelAnimating = false;
+let pendingLabelState = null;
+let pendingLabelColor = null;
 function animateStateLabel(newState, newColor) {
   const stateLabel = document.getElementById('state-label');
   if (labelAnimating) {
-    // Skip animation if already animating
-    stateLabel.textContent = newState;
-    stateLabel.style.color = newColor;
+    // Queue the latest state; it will be shown once the current animation finishes
+    pendingLabelState = newState;
+    pendingLabelColor = newColor;
     return;
   }
   labelAnimating = true;
@@ -631,6 +895,13 @@ function animateStateLabel(newState, newColor) {
     stateLabel.style.color = newColor;
     stateLabel.classList.remove('animating-out');
     labelAnimating = false;
+    if (pendingLabelState !== null) {
+      const next = pendingLabelState;
+      const nextColor = pendingLabelColor;
+      pendingLabelState = null;
+      pendingLabelColor = null;
+      animateStateLabel(next, nextColor);
+    }
   }, 150);
 }
 
@@ -665,6 +936,16 @@ function animateTimelineDots(history) {
 // STEP 5, 6, 8: Update & Render
 // ============================================================
 
+// Flow field: smooth sine-based vector field that evolves over time
+function flowAngle(x, y, t) {
+  return Math.sin(x * 0.007 + t * 0.25 + Math.cos(y * 0.009 + t * 0.15)) * Math.PI
+       + Math.sin(y * 0.006 - t * 0.18 + Math.cos(x * 0.008 - t * 0.12)) * Math.PI * 0.5;
+}
+const FLOW_STRENGTH = {
+  OFF: 0.35, IDLE: 0.12, RECEIVING: 0, THINKING: 0.1, WORKING: 0.05,
+  PLANNING: 0, DELEGATING: 0.07, COMPLETE: 0,
+};
+
 let lastTime = performance.now();
 let time = 0;
 
@@ -695,25 +976,25 @@ function update(now) {
   if (reducedMotion) {
     shakeX = 0; shakeY = 0;
   } else {
-    const shakeResult = springStep(shakeX, 0, shakeVx, { stiffness: 300, damping: 25, mass: 1 });
+    const shakeResult = springStep(shakeX, 0, shakeVx, { stiffness: 300, damping: 25, mass: 1 }, dt);
     shakeX = shakeResult.position; shakeVx = shakeResult.velocity;
-    const shakeResultY = springStep(shakeY, 0, shakeVy, { stiffness: 300, damping: 25, mass: 1 });
+    const shakeResultY = springStep(shakeY, 0, shakeVy, { stiffness: 300, damping: 25, mass: 1 }, dt);
     shakeY = shakeResultY.position; shakeVy = shakeResultY.velocity;
   }
 
-  // Flash decay (Step 6: faster decay)
+  // Flash decay (Step 6: faster decay) — dt-normalized so rate is fps-independent
   if (reducedMotion) {
     flashAlpha = 0;
   } else {
-    flashAlpha *= 0.88;
-    flashScale += (1 - flashScale) * 0.15;
+    flashAlpha *= Math.pow(0.88, dt * BASE_FPS);
+    flashScale += (1 - flashScale) * (1 - Math.pow(0.85, dt * BASE_FPS));
   }
 
   // Burst timer for WORKING (Step 6: staggered waves)
   burstTimer += dt;
   if (cfg.bursts && burstTimer > 0.5 && !reducedMotion) {
     burstTimer = 0;
-    const effectiveCount = reducedMotion ? Math.ceil(cfg.count * 0.5) : cfg.count;
+    const effectiveCount = Math.max(1, Math.round(cfg.count * CONFIG.particleScale * (reducedMotion ? 0.5 : 1)));
     // 3 staggered waves
     for (let wave = 0; wave < 3; wave++) {
       setTimeout(() => {
@@ -750,7 +1031,7 @@ function update(now) {
       // Ease-out expansion (fast start)
       const expandSpeed = 300 + r.radius * 0.5;
       r.radius += expandSpeed * dt;
-      r.alpha *= 0.95;
+      r.alpha *= Math.pow(0.95, dt * BASE_FPS);
       r.strokeWidth = Math.max(0, r.strokeWidth - dt * 4);
       return r.alpha > 0.01 && r.strokeWidth > 0.01;
     });
@@ -779,7 +1060,9 @@ function update(now) {
       } else if (enterProgress >= 1) {
         p.entering = false;
         p.scale = 1;
-        p.sourceAlpha = p.alpha; // hand off cleanly to transition interpolation
+        // Snap to exact targetAlpha so the transition interpolation starts from a clean value
+        if (p.targetAlpha !== undefined) p.alpha = p.targetAlpha;
+        p.sourceAlpha = p.alpha;
       }
     }
 
@@ -843,31 +1126,56 @@ function update(now) {
     if (p.burst) {
       p.life -= dt * 1.5;
       p.alpha = p.life * 0.8;
-      p.scale += (0 - p.scale) * 0.02;
+      p.scale += (0 - p.scale) * (1 - Math.pow(0.98, dt * BASE_FPS));
       if (p.life <= 0) { particles.splice(i, 1); continue; }
+    }
+
+    // Flow field + mouse gravity well (applied before state spring physics)
+    if (!reducedMotion && !p.burst) {
+      if (CONFIG.flowField) {
+        const fs = FLOW_STRENGTH[currentState] || 0;
+        if (fs > 0) {
+          const fa = flowAngle(p.x, p.y, time);
+          p.x += Math.cos(fa) * fs * dt * BASE_FPS;
+          p.y += Math.sin(fa) * fs * dt * BASE_FPS;
+        }
+      }
+      if (CONFIG.mouseGravity) {
+        const mdx = mouseX - p.x, mdy = mouseY - p.y;
+        const md2 = mdx * mdx + mdy * mdy;
+        if (md2 < 130 * 130 && md2 > 4) {
+          const mDist = Math.sqrt(md2);
+          const falloff = 1 - mDist / 130;
+          const strength = falloff * falloff * 0.9 * CONFIG.mouseGravityStrength * dt * BASE_FPS;
+          const dir = (currentState === 'THINKING' || currentState === 'WORKING') ? -1 : 1;
+          p.x += (mdx / mDist) * strength * dir;
+          p.y += (mdy / mDist) * strength * dir;
+        }
+      }
     }
 
     // Step 5: Spring-driven particle motion per state
     if (currentState === 'OFF') {
-      p.vx += (Math.random() - 0.5) * 0.01;
-      p.vy += (Math.random() - 0.5) * 0.01;
-      p.vx *= 0.99; p.vy *= 0.99;
+      p.vx += (Math.random() - 0.5) * 0.01 * dt * BASE_FPS;
+      p.vy += (Math.random() - 0.5) * 0.01 * dt * BASE_FPS;
+      const offFric = Math.pow(0.99, dt * BASE_FPS);
+      p.vx *= offFric; p.vy *= offFric;
 
     } else if (currentState === 'IDLE') {
       p.angle += p.orbitSpeed * cfg.speed * dt;
       const targetR = cfg.orbit + breathe + Math.sin(p.baseAngle * 3) * 20;
       // Spring-driven radius
       if (reducedMotion) {
-        p.radius += (targetR - p.radius) * 0.02;
+        p.radius += (targetR - p.radius) * (1 - Math.pow(0.98, dt * BASE_FPS));
       } else {
-        const rSpring = springStep(p.radius, targetR, p.radiusVel || 0, spring);
+        const rSpring = springStep(p.radius, targetR, p.radiusVel || 0, spring, dt);
         p.radius = rSpring.position;
         p.radiusVel = rSpring.velocity;
       }
       const tx = cx + Math.cos(p.angle) * p.radius;
       const ty = cy + Math.sin(p.angle) * p.radius;
-      const sx = springStep(p.x, tx, p.vx, spring);
-      const sy = springStep(p.y, ty, p.vy, spring);
+      const sx = springStep(p.x, tx, p.vx, spring, dt);
+      const sy = springStep(p.y, ty, p.vy, spring, dt);
       p.vx = sx.velocity; p.vy = sy.velocity;
       p.x = sx.position; p.y = sy.position;
       continue; // skip p.x += p.vx below
@@ -876,12 +1184,12 @@ function update(now) {
       if (reducedMotion) {
         const dx = cx - p.x, dy = cy - p.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        p.vx += (dx / dist) * cfg.speed * 0.5;
-        p.vy += (dy / dist) * cfg.speed * 0.5;
-        p.vx *= 0.95; p.vy *= 0.95;
+        p.vx += (dx / dist) * cfg.speed * 0.5 * dt * BASE_FPS;
+        p.vy += (dy / dist) * cfg.speed * 0.5 * dt * BASE_FPS;
+        p.vx *= Math.pow(0.95, dt * BASE_FPS); p.vy *= Math.pow(0.95, dt * BASE_FPS);
       } else {
-        const sx = springStep(p.x, cx, p.vx, spring);
-        const sy = springStep(p.y, cy, p.vy, spring);
+        const sx = springStep(p.x, cx, p.vx, spring, dt);
+        const sy = springStep(p.y, cy, p.vy, spring, dt);
         p.vx = sx.velocity; p.vy = sy.velocity;
         p.x = sx.position; p.y = sy.position;
         continue;
@@ -893,12 +1201,12 @@ function update(now) {
       const tx = cx + Math.cos(p.angle) * tr;
       const ty = cy + Math.sin(p.angle) * tr;
       if (reducedMotion) {
-        p.vx += (tx - p.x) * 0.02;
-        p.vy += (ty - p.y) * 0.02;
-        p.vx *= 0.95; p.vy *= 0.95;
+        p.vx += (tx - p.x) * 0.02 * dt * BASE_FPS;
+        p.vy += (ty - p.y) * 0.02 * dt * BASE_FPS;
+        p.vx *= Math.pow(0.95, dt * BASE_FPS); p.vy *= Math.pow(0.95, dt * BASE_FPS);
       } else {
-        const sx = springStep(p.x, tx, p.vx, spring);
-        const sy = springStep(p.y, ty, p.vy, spring);
+        const sx = springStep(p.x, tx, p.vx, spring, dt);
+        const sy = springStep(p.y, ty, p.vy, spring, dt);
         p.vx = sx.velocity; p.vy = sy.velocity;
         p.x = sx.position; p.y = sy.position;
         continue;
@@ -910,12 +1218,12 @@ function update(now) {
       const tx = cx + Math.cos(p.angle) * tr;
       const ty = cy + Math.sin(p.angle) * tr;
       if (reducedMotion) {
-        p.vx += (tx - p.x) * 0.015;
-        p.vy += (ty - p.y) * 0.015;
-        p.vx *= 0.96; p.vy *= 0.96;
+        p.vx += (tx - p.x) * 0.015 * dt * BASE_FPS;
+        p.vy += (ty - p.y) * 0.015 * dt * BASE_FPS;
+        p.vx *= Math.pow(0.96, dt * BASE_FPS); p.vy *= Math.pow(0.96, dt * BASE_FPS);
       } else {
-        const sx = springStep(p.x, tx, p.vx, spring);
-        const sy = springStep(p.y, ty, p.vy, spring);
+        const sx = springStep(p.x, tx, p.vx, spring, dt);
+        const sy = springStep(p.y, ty, p.vy, spring, dt);
         p.vx = sx.velocity; p.vy = sy.velocity;
         p.x = sx.position; p.y = sy.position;
         continue;
@@ -928,36 +1236,36 @@ function update(now) {
         const rx = cx + (target.x - cx) * Math.cos(rot) - (target.y - cy) * Math.sin(rot);
         const ry = cy + (target.x - cx) * Math.sin(rot) + (target.y - cy) * Math.cos(rot);
         if (reducedMotion) {
-          p.vx += (rx - p.x) * 0.03;
-          p.vy += (ry - p.y) * 0.03;
-          p.vx *= 0.9; p.vy *= 0.9;
+          p.vx += (rx - p.x) * 0.03 * dt * BASE_FPS;
+          p.vy += (ry - p.y) * 0.03 * dt * BASE_FPS;
+          p.vx *= Math.pow(0.9, dt * BASE_FPS); p.vy *= Math.pow(0.9, dt * BASE_FPS);
         } else {
-          const sx = springStep(p.x, rx, p.vx, spring);
-          const sy = springStep(p.y, ry, p.vy, spring);
+          const sx = springStep(p.x, rx, p.vx, spring, dt);
+          const sy = springStep(p.y, ry, p.vy, spring, dt);
           p.vx = sx.velocity; p.vy = sy.velocity;
           p.x = sx.position; p.y = sy.position;
           continue;
         }
       } else {
-        p.vx *= 0.9; p.vy *= 0.9;
+        p.vx *= Math.pow(0.9, dt * BASE_FPS); p.vy *= Math.pow(0.9, dt * BASE_FPS);
       }
 
     } else if (currentState === 'DELEGATING') {
       if (p.orbIndex >= 0 && p.orbIndex < subOrbs.length) {
         const orb = subOrbs[p.orbIndex];
-        orb.angle += orb.speed;
+        orb.angle += orb.speed * dt * BASE_FPS;
         const ox = cx + Math.cos(orb.angle) * orb.dist;
         const oy = cy + Math.sin(orb.angle) * orb.dist;
-        p.angle += p.orbitSpeed * 0.02;
+        p.angle += p.orbitSpeed * 0.02 * dt * BASE_FPS;
         const tx = ox + Math.cos(p.angle) * 30;
         const ty = oy + Math.sin(p.angle) * 30;
         if (reducedMotion) {
-          p.vx += (tx - p.x) * 0.04;
-          p.vy += (ty - p.y) * 0.04;
-          p.vx *= 0.94; p.vy *= 0.94;
+          p.vx += (tx - p.x) * 0.04 * dt * BASE_FPS;
+          p.vy += (ty - p.y) * 0.04 * dt * BASE_FPS;
+          p.vx *= Math.pow(0.94, dt * BASE_FPS); p.vy *= Math.pow(0.94, dt * BASE_FPS);
         } else {
-          const sx = springStep(p.x, tx, p.vx, spring);
-          const sy = springStep(p.y, ty, p.vy, spring);
+          const sx = springStep(p.x, tx, p.vx, spring, dt);
+          const sy = springStep(p.y, ty, p.vy, spring, dt);
           p.vx = sx.velocity; p.vy = sy.velocity;
           p.x = sx.position; p.y = sy.position;
           continue;
@@ -967,12 +1275,12 @@ function update(now) {
         const tx = cx + Math.cos(p.angle) * cfg.orbit;
         const ty = cy + Math.sin(p.angle) * cfg.orbit;
         if (reducedMotion) {
-          p.vx += (tx - p.x) * 0.02;
-          p.vy += (ty - p.y) * 0.02;
-          p.vx *= 0.94; p.vy *= 0.94;
+          p.vx += (tx - p.x) * 0.02 * dt * BASE_FPS;
+          p.vy += (ty - p.y) * 0.02 * dt * BASE_FPS;
+          p.vx *= Math.pow(0.94, dt * BASE_FPS); p.vy *= Math.pow(0.94, dt * BASE_FPS);
         } else {
-          const sx = springStep(p.x, tx, p.vx, spring);
-          const sy = springStep(p.y, ty, p.vy, spring);
+          const sx = springStep(p.x, tx, p.vx, spring, dt);
+          const sy = springStep(p.y, ty, p.vy, spring, dt);
           p.vx = sx.velocity; p.vy = sy.velocity;
           p.x = sx.position; p.y = sy.position;
           continue;
@@ -983,14 +1291,34 @@ function update(now) {
       const target = crystalTargets[i % crystalTargets.length];
       if (target) {
         if (reducedMotion) {
-          p.vx += (target.x - p.x) * 0.05;
-          p.vy += (target.y - p.y) * 0.05;
-          p.vx *= 0.85; p.vy *= 0.85;
+          p.vx += (target.x - p.x) * 0.05 * dt * BASE_FPS;
+          p.vy += (target.y - p.y) * 0.05 * dt * BASE_FPS;
+          p.vx *= Math.pow(0.85, dt * BASE_FPS); p.vy *= Math.pow(0.85, dt * BASE_FPS);
         } else {
-          const sx = springStep(p.x, target.x, p.vx, spring);
-          const sy = springStep(p.y, target.y, p.vy, spring);
+          const sx = springStep(p.x, target.x, p.vx, spring, dt);
+          const sy = springStep(p.y, target.y, p.vy, spring, dt);
           p.vx = sx.velocity; p.vy = sy.velocity;
           p.x = sx.position; p.y = sy.position;
+          // Crystal snap: detect arrival and emit sparkle burst
+          if (!p.snapped && !p.entering) {
+            const snapDx = p.x - target.x, snapDy = p.y - target.y;
+            const speed2 = p.vx * p.vx + p.vy * p.vy;
+            if (snapDx * snapDx + snapDy * snapDy < 16 && speed2 < 0.4) {
+              p.snapped = true;
+              for (let s = 0; s < 3; s++) {
+                const sa = (s / 3) * Math.PI * 2 + Math.random() * 1.2;
+                const sv = 0.7 + Math.random() * 1.8;
+                const spark = createParticle(0, 1, false);
+                spark.x = p.x; spark.y = p.y;
+                spark.vx = Math.cos(sa) * sv; spark.vy = Math.sin(sa) * sv;
+                spark.size = 0.8 + Math.random() * 0.8;
+                spark.alpha = 0.95; spark.life = 0.35 + Math.random() * 0.25;
+                spark.color = [255, 248, 210]; spark.colorHSL = rgbToHsl(255, 248, 210);
+                spark.burst = true;
+                particles.push(spark);
+              }
+            }
+          }
           continue;
         }
       }
@@ -1012,9 +1340,14 @@ function render(now) {
   const cfg = STATE_CONFIGS[currentState];
   const frameStart = performance.now();
 
-  // Trail effect
+  // Trail effect — alpha normalized for CONFIG.targetFps so trail length is
+  // consistent regardless of refresh rate (higher Hz = more frames = faster decay
+  // without normalization; this formula compensates by adjusting alpha per frame)
+  const trailAlpha = reducedMotion
+    ? Math.min(1, cfg.trail * 2)
+    : 1 - Math.pow(1 - cfg.trail, BASE_FPS / CONFIG.targetFps);
   ctx.save();
-  ctx.globalAlpha = reducedMotion ? cfg.trail * 2 : cfg.trail;
+  ctx.globalAlpha = trailAlpha;
   ctx.fillStyle = '#0a0a0f';
   ctx.fillRect(0, 0, W, H);
   ctx.restore();
@@ -1036,6 +1369,24 @@ function render(now) {
 
   ctx.save();
   ctx.translate(shakeX, shakeY);
+
+  // Echo afterimage: ghost of previous state, fades out over ECHO_DURATION
+  if (!reducedMotion && CONFIG.echoAfterimage && echoParticles.length > 0) {
+    const echoElapsed = now - echoStartTime;
+    const echoT = Math.max(0, 1 - echoElapsed / ECHO_DURATION);
+    if (echoT > 0.005) {
+      const easedT = echoT * echoT; // quadratic ease-out
+      for (const e of echoParticles) {
+        ctx.globalAlpha = e.alpha * easedT;
+        ctx.fillStyle = `rgb(${e.color[0]},${e.color[1]},${e.color[2]})`;
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else {
+      echoParticles = [];
+    }
+  }
 
   // Connection lines (THINKING, PLANNING)
   if (cfg.connections && !reducedMotion) {
@@ -1064,7 +1415,8 @@ function render(now) {
   for (const p of particles) {
     ctx.globalAlpha = p.alpha;
     ctx.fillStyle = `rgb(${p.color[0]},${p.color[1]},${p.color[2]})`;
-    const renderSize = p.size * (p.scale || 1);
+    const microPulse = 1 + Math.sin(time * (p.phaseSpeed || 2) + (p.phase || 0)) * 0.065;
+    const renderSize = p.size * (p.scale || 1) * microPulse;
     ctx.beginPath();
     ctx.arc(p.x, p.y, renderSize, 0, Math.PI * 2);
     ctx.fill();
@@ -1109,6 +1461,26 @@ function render(now) {
     ctx.fillRect(0, 0, W, H);
   }
 
+  // Chromatic aberration: colored lens fringing at flash peak
+  if (!reducedMotion && CONFIG.chromaticAberration && flashAlpha > 0.22) {
+    const ca = Math.min(1, (flashAlpha - 0.22) / 0.4);
+    const offset = ca * 9;
+    const R = Math.max(W, H) * 0.55;
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const rGrad = ctx.createRadialGradient(cx + offset, cy, 0, cx + offset, cy, R);
+    rGrad.addColorStop(0, `rgba(255,50,50,${(ca * 0.22).toFixed(3)})`);
+    rGrad.addColorStop(0.35, `rgba(255,50,50,${(ca * 0.04).toFixed(3)})`);
+    rGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = rGrad; ctx.fillRect(0, 0, W, H);
+    const bGrad = ctx.createRadialGradient(cx - offset, cy, 0, cx - offset, cy, R);
+    bGrad.addColorStop(0, `rgba(50,50,255,${(ca * 0.22).toFixed(3)})`);
+    bGrad.addColorStop(0.35, `rgba(50,50,255,${(ca * 0.04).toFixed(3)})`);
+    bGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = bGrad; ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
   // Center glow
   if (currentState !== 'OFF') {
     const glowAlpha = currentState === 'COMPLETE'
@@ -1137,6 +1509,161 @@ function render(now) {
     }
   }
 }
+
+// ============================================================
+// AUDIO: Generative ambient synthesizer
+// ============================================================
+
+function initAudio() {
+  if (audioCtx) return;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = CONFIG.audioMuted ? 0 : CONFIG.audioVolume * 0.20;
+    masterGain.connect(audioCtx.destination);
+  } catch(e) {}
+}
+
+function applyAudioConfig() {
+  if (!masterGain) return;
+  masterGain.gain.setTargetAtTime(
+    CONFIG.audioMuted ? 0 : CONFIG.audioVolume * 0.20,
+    audioCtx.currentTime, 0.05
+  );
+}
+
+function fadeOutAudio(audioObj) {
+  if (!audioObj || !audioCtx) return;
+  try {
+    const now = audioCtx.currentTime;
+    audioObj.gainNode.gain.cancelScheduledValues(now);
+    audioObj.gainNode.gain.setValueAtTime(audioObj.gainNode.gain.value, now);
+    audioObj.gainNode.gain.linearRampToValueAtTime(0, now + 0.55);
+    setTimeout(() => {
+      audioObj.nodes.forEach(n => { try { n.stop && n.stop(); } catch(e) {} });
+      try { audioObj.gainNode.disconnect(); } catch(e) {}
+    }, 700);
+  } catch(e) {}
+}
+
+function createStateAudio(state) {
+  if (!audioCtx || reducedMotion) return null;
+  const t = audioCtx.currentTime;
+  const gainNode = audioCtx.createGain();
+  gainNode.gain.setValueAtTime(0, t);
+  gainNode.gain.linearRampToValueAtTime(1, t + 0.6);
+  gainNode.connect(masterGain);
+  const nodes = [];
+  try {
+    if (state === 'IDLE') {
+      // Warm sub-drone with slow tremolo — two detuned sines + triangle harmonic
+      [55, 55.5, 110].forEach((f, i) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = i < 2 ? 'sine' : 'triangle';
+        osc.frequency.value = f;
+        const g = audioCtx.createGain(); g.gain.value = i < 2 ? 0.38 : 0.10;
+        osc.connect(g); g.connect(gainNode); osc.start(); nodes.push(osc, g);
+      });
+      const lfo = audioCtx.createOscillator();
+      const lfoG = audioCtx.createGain();
+      lfo.frequency.value = 0.22; lfoG.gain.value = 0.14;
+      lfo.connect(lfoG); lfoG.connect(gainNode.gain);
+      lfo.start(); nodes.push(lfo, lfoG);
+
+    } else if (state === 'THINKING') {
+      // Layered sines drifting in and out of phase — contemplative chorus
+      [110, 138.59, 164.81, 220].forEach((f, i) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine'; osc.frequency.value = f;
+        osc.frequency.linearRampToValueAtTime(f * 1.003, t + 4 + i * 1.7);
+        osc.frequency.linearRampToValueAtTime(f, t + 8 + i * 1.7);
+        const g = audioCtx.createGain(); g.gain.value = 0.21;
+        osc.connect(g); g.connect(gainNode); osc.start(); nodes.push(osc, g);
+      });
+
+    } else if (state === 'WORKING') {
+      // Rhythmic bandpass-filtered sawtooth — driven, energetic
+      const osc = audioCtx.createOscillator();
+      osc.type = 'sawtooth'; osc.frequency.value = 110;
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'bandpass'; filter.frequency.value = 600; filter.Q.value = 4;
+      const lfo = audioCtx.createOscillator();
+      const lfoG = audioCtx.createGain();
+      lfo.frequency.value = 3.5; lfoG.gain.value = 480;
+      lfo.connect(lfoG); lfoG.connect(filter.frequency);
+      osc.connect(filter); filter.connect(gainNode);
+      osc.start(); lfo.start(); nodes.push(osc, filter, lfo, lfoG);
+
+    } else if (state === 'RECEIVING') {
+      // Brief rising cluster — self-terminating in ~1s
+      gainNode.gain.cancelScheduledValues(t);
+      gainNode.gain.setValueAtTime(0, t);
+      gainNode.gain.linearRampToValueAtTime(1, t + 0.12);
+      gainNode.gain.linearRampToValueAtTime(0, t + 0.95);
+      [880, 1108.73, 1318.51].forEach((f, i) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(f * 0.65, t);
+        osc.frequency.linearRampToValueAtTime(f, t + 0.28);
+        const g = audioCtx.createGain(); g.gain.value = 0.18;
+        osc.connect(g); g.connect(gainNode);
+        osc.start(); osc.stop(t + 1.1); nodes.push(osc, g);
+      });
+
+    } else if (state === 'PLANNING') {
+      // Open fifths — sparse, contemplative
+      [196, 293.66, 392].forEach(f => {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'triangle'; osc.frequency.value = f;
+        const g = audioCtx.createGain(); g.gain.value = 0.17;
+        osc.connect(g); g.connect(gainNode); osc.start(); nodes.push(osc, g);
+      });
+
+    } else if (state === 'COMPLETE') {
+      // A major triad, staggered attack, decays to silence — resolution
+      gainNode.gain.cancelScheduledValues(t);
+      gainNode.gain.setValueAtTime(0, t);
+      gainNode.gain.linearRampToValueAtTime(1, t + 0.08);
+      gainNode.gain.linearRampToValueAtTime(0, t + 4.2);
+      [220, 277.18, 329.63].forEach((f, i) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine'; osc.frequency.value = f;
+        const g = audioCtx.createGain();
+        g.gain.setValueAtTime(0, t + i * 0.09);
+        g.gain.linearRampToValueAtTime(0.32, t + i * 0.09 + 0.18);
+        osc.connect(g); g.connect(gainNode);
+        osc.start(); osc.stop(t + 4.8); nodes.push(osc, g);
+      });
+
+    } else if (state === 'DELEGATING') {
+      // Rotating harmonic series — complex, orbital
+      [164.81, 246.94, 329.63, 440].forEach((f, i) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine'; osc.frequency.value = f;
+        const lfo = audioCtx.createOscillator();
+        const lfoG = audioCtx.createGain();
+        lfo.frequency.value = 0.18 + i * 0.06; lfoG.gain.value = 0.09;
+        lfo.connect(lfoG);
+        const g = audioCtx.createGain(); g.gain.value = 0.17;
+        lfoG.connect(g.gain);
+        osc.connect(g); g.connect(gainNode);
+        osc.start(); lfo.start(); nodes.push(osc, g, lfo, lfoG);
+      });
+    }
+  } catch(e) {}
+  return { gainNode, nodes };
+}
+
+function transitionAudio(state) {
+  if (!audioCtx) return;
+  fadeOutAudio(currentAudioNodes);
+  currentAudioNodes = createStateAudio(state);
+}
+
+// Initialize audio on first user gesture (browser autoplay policy)
+const initAudioOnce = () => { initAudio(); transitionAudio(currentState); };
+document.addEventListener('click', initAudioOnce, { once: true });
+document.addEventListener('keydown', initAudioOnce, { once: true });
 
 // --- Animation loop ---
 function frame(now) {
@@ -1224,6 +1751,140 @@ function connect() {
 }
 
 connect();
+
+// ============================================================
+// SETTINGS PANEL
+// ============================================================
+
+(function initSettings() {
+  const panel  = document.getElementById('settings-panel');
+  const btn    = document.getElementById('settings-btn');
+  let isOpen = false;
+
+  function openPanel()  { isOpen = true;  panel.classList.add('open');    btn.classList.add('active'); }
+  function closePanel() { isOpen = false; panel.classList.remove('open'); btn.classList.remove('active'); }
+  function togglePanel() { isOpen ? closePanel() : openPanel(); }
+
+  btn.addEventListener('click', e => { e.stopPropagation(); togglePanel(); });
+  panel.addEventListener('click', e => e.stopPropagation());
+  document.addEventListener('click', () => { if (isOpen) closePanel(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === ',' && !e.ctrlKey && !e.metaKey && !e.altKey) togglePanel();
+    if (e.key === 'Escape' && isOpen) closePanel();
+  });
+
+  // --- Hz pills ---
+  const hzPills = document.querySelectorAll('.hz-pill');
+  function syncHzPills() {
+    hzPills.forEach(p => p.classList.toggle('active', parseInt(p.dataset.hz) === CONFIG.targetFps));
+  }
+  hzPills.forEach(pill => pill.addEventListener('click', () => {
+    CONFIG.targetFps = parseInt(pill.dataset.hz);
+    syncHzPills();
+    saveConfig();
+  }));
+  syncHzPills();
+
+  // --- Particle scale ---
+  const particleRange = document.getElementById('particle-scale');
+  const particleVal   = document.getElementById('particle-scale-val');
+  function syncParticleScale() {
+    particleRange.value = Math.round(CONFIG.particleScale * 100);
+    particleVal.textContent = Math.round(CONFIG.particleScale * 100) + '%';
+  }
+  particleRange.addEventListener('input', () => {
+    CONFIG.particleScale = parseInt(particleRange.value) / 100;
+    particleVal.textContent = particleRange.value + '%';
+    // Apply immediately
+    const cfg = STATE_CONFIGS[currentState];
+    const newCount = Math.max(1, Math.round(cfg.count * CONFIG.particleScale * (reducedMotion ? 0.5 : 1)));
+    ensureParticlesAnimated(newCount);
+    saveConfig();
+  });
+  syncParticleScale();
+
+  // --- Audio mute toggle ---
+  const muteBtn = document.getElementById('audio-mute-toggle');
+  function syncMute() {
+    const on = !CONFIG.audioMuted;
+    muteBtn.textContent = on ? 'ON' : 'OFF';
+    muteBtn.classList.toggle('on', on);
+  }
+  muteBtn.addEventListener('click', () => {
+    // First click initialises audio if needed
+    if (!audioCtx) { initAudio(); transitionAudio(currentState); }
+    CONFIG.audioMuted = !CONFIG.audioMuted;
+    applyAudioConfig();
+    syncMute();
+    saveConfig();
+  });
+  syncMute();
+
+  // --- Volume slider ---
+  const volumeRange = document.getElementById('audio-volume');
+  const volumeVal   = document.getElementById('audio-volume-val');
+  function syncVolume() {
+    volumeRange.value = Math.round(CONFIG.audioVolume * 100);
+    volumeVal.textContent = Math.round(CONFIG.audioVolume * 100) + '%';
+  }
+  volumeRange.addEventListener('input', () => {
+    CONFIG.audioVolume = parseInt(volumeRange.value) / 100;
+    volumeVal.textContent = volumeRange.value + '%';
+    applyAudioConfig();
+    saveConfig();
+  });
+  syncVolume();
+
+  // --- Toggle helper ---
+  function bindToggle(id, configKey, labels) {
+    const el = document.getElementById(id);
+    function sync() {
+      const val = CONFIG[configKey];
+      const label = labels ? (labels[String(val)] || labels.default || String(val)) : (val ? 'ON' : 'OFF');
+      el.textContent = label;
+      el.classList.toggle('on', val === true || val === 'on');
+    }
+    el.addEventListener('click', () => {
+      if (labels && Object.keys(labels).length === 3) {
+        // 3-state cycle: true → false → null → true
+        if (CONFIG[configKey] === null) CONFIG[configKey] = true;
+        else if (CONFIG[configKey] === true) CONFIG[configKey] = false;
+        else CONFIG[configKey] = null;
+      } else {
+        CONFIG[configKey] = !CONFIG[configKey];
+      }
+      sync();
+      saveConfig();
+      if (configKey === 'reducedMotionOverride') {
+        reducedMotion = CONFIG.reducedMotionOverride !== null ? CONFIG.reducedMotionOverride : motionQuery.matches;
+      }
+    });
+    sync();
+    return sync;
+  }
+
+  bindToggle('mouse-gravity-toggle', 'mouseGravity');
+  bindToggle('flow-field-toggle',    'flowField');
+  bindToggle('echo-toggle',          'echoAfterimage');
+  bindToggle('chromatic-toggle',     'chromaticAberration');
+  bindToggle('reduced-motion-toggle', 'reducedMotionOverride', {
+    'true': 'ON', 'false': 'OFF', 'null': 'AUTO', default: 'AUTO'
+  });
+
+  // --- Mouse gravity strength slider ---
+  const gravStrRange = document.getElementById('mouse-gravity-strength');
+  const gravStrVal   = document.getElementById('mouse-gravity-strength-val');
+  function syncGravStr() {
+    gravStrRange.value = Math.round(CONFIG.mouseGravityStrength * 100);
+    gravStrVal.textContent = Math.round(CONFIG.mouseGravityStrength * 100) + '%';
+  }
+  gravStrRange.addEventListener('input', () => {
+    CONFIG.mouseGravityStrength = parseInt(gravStrRange.value) / 100;
+    gravStrVal.textContent = gravStrRange.value + '%';
+    saveConfig();
+  });
+  syncGravStr();
+})();
 </script>
 </body>
 </html>
