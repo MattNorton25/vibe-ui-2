@@ -18,6 +18,12 @@
     top: 0; left: 0;
     width: 100vw; height: 100vh;
   }
+  #fluid-canvas {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+  }
   #overlay {
     position: fixed;
     bottom: 0; left: 0; right: 0;
@@ -38,7 +44,7 @@
     font-weight: 600;
     letter-spacing: 3px;
     text-transform: uppercase;
-    opacity: 0.7;
+    opacity: var(--label-opacity, 0.7);
     transition: color 500ms cubic-bezier(0.23, 1, 0.32, 1),
                 opacity 300ms cubic-bezier(0.23, 1, 0.32, 1),
                 transform 400ms cubic-bezier(0.23, 1, 0.32, 1);
@@ -79,15 +85,20 @@
     opacity: 0.6;
     transform: scale(1);
   }
-  #connection-status {
+  #top-right {
     position: fixed;
-    top: 16px;
-    right: 16px;
+    top: 12px; right: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    z-index: 30;
+  }
+  #connection-status {
     font-size: 10px;
     letter-spacing: 2px;
     text-transform: uppercase;
     opacity: 0.3;
-    z-index: 10;
   }
   #session-count {
     position: fixed;
@@ -114,17 +125,23 @@
 
   /* Settings */
   #settings-btn {
-    position: fixed;
-    top: 12px; right: 16px;
     background: none; border: none;
     color: rgba(255,255,255,0.25);
     font-size: 15px; cursor: pointer;
-    z-index: 30; padding: 4px 6px;
+    padding: 4px 6px;
     transition: color 200ms;
     font-family: inherit; line-height: 1;
   }
   #settings-btn:hover { color: rgba(255,255,255,0.6); }
   #settings-btn.active { color: rgba(255,255,255,0.7); }
+  body.fluid-theme { background: #f0ebe0; color: #2a2018; }
+  body.fluid-theme #state-label { color: rgba(40,28,14,0.5); }
+  body.fluid-theme #tool-label { color: rgba(40,28,14,0.35); }
+  body.fluid-theme #connection-status { color: rgba(40,28,14,0.3); }
+  body.fluid-theme #session-count { color: rgba(40,28,14,0.3); }
+  body.fluid-theme #settings-btn { color: rgba(40,28,14,0.22); }
+  body.fluid-theme #settings-btn:hover { color: rgba(40,28,14,0.55); }
+  body.fluid-theme #settings-btn.active { color: rgba(40,28,14,0.7); }
 
   #settings-panel {
     position: fixed;
@@ -177,6 +194,45 @@
     font-size: 11px; color: rgba(255,255,255,0.45);
     flex: 1; white-space: nowrap; letter-spacing: 0.3px;
   }
+  .theme-swatch-row {
+    justify-content: flex-end;
+  }
+  .theme-swatches {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .theme-swatch {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 9px;
+    font-family: inherit;
+    background: none;
+    color: rgba(255,255,255,0.4);
+    transition: all 140ms;
+    letter-spacing: 0.5px;
+  }
+  .theme-swatch:hover { border-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.7); }
+  .theme-swatch.active { border-color: rgba(255,255,255,0.5); color: #fff; background: rgba(255,255,255,0.07); }
+  .theme-swatch-preview {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+  .theme-swatch-preview.particle {
+    background:
+      radial-gradient(circle at 50% 50%, rgba(180,220,255,0.95) 0 24%, rgba(90,150,255,0.45) 25% 55%, rgba(10,10,15,0) 56%),
+      #0a0a0f;
+    box-shadow: 0 0 10px rgba(120,180,255,0.35);
+  }
+  .theme-swatch-preview.fluid {
+    background: radial-gradient(circle at 40% 35%, #8b3a10, #18304e);
+  }
 
   /* Hz pills */
   .hz-pills { display: flex; gap: 3px; flex-wrap: wrap; justify-content: flex-end; }
@@ -226,11 +282,25 @@
     font-size: 9px; color: rgba(255,255,255,0.12); letter-spacing: 1px;
     text-align: center; flex-shrink: 0;
   }
+
+  /* Fluid palette buttons */
+  .palette-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .palette-btn {
+    display: flex; align-items: center; gap: 7px;
+    background: none; border: 1px solid rgba(255,255,255,0.09);
+    color: rgba(255,255,255,0.35); font-family: inherit; font-size: 10px;
+    letter-spacing: 1px; padding: 7px 10px; cursor: pointer;
+    border-radius: 2px; transition: border-color 160ms, color 160ms, background 160ms;
+    text-align: left;
+  }
+  .palette-btn:hover { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.65); }
+  .palette-btn.active { border-color: rgba(255,255,255,0.45); color: #fff; background: rgba(255,255,255,0.06); }
+  .palette-dot { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; }
 </style>
 </head>
 <body>
 <canvas id="canvas"></canvas>
-<div id="connection-status">connecting...</div>
+<canvas id="fluid-canvas"></canvas>
 <div id="session-count"></div>
 <div id="overlay">
   <div id="state-info">
@@ -240,7 +310,10 @@
   <div id="timeline"></div>
 </div>
 
-<button id="settings-btn" title="Settings (,)">⚙</button>
+<div id="top-right">
+  <button id="settings-btn" title="Settings (,)">⚙</button>
+  <div id="connection-status">connecting...</div>
+</div>
 
 <div id="settings-panel" role="dialog" aria-label="Settings">
   <div class="sp-header">
@@ -248,6 +321,54 @@
     <span class="sp-header-hint">press , to close</span>
   </div>
 
+  <div class="sp-group">
+    <div class="sp-group-label">Theme</div>
+    <div class="sp-row theme-swatch-row">
+      <span class="sp-row-label">Visual style</span>
+      <div class="theme-swatches">
+        <button class="theme-swatch" data-theme="particle" type="button">
+          <span class="theme-swatch-preview particle" aria-hidden="true"></span>
+          <span>Particle</span>
+        </button>
+        <button class="theme-swatch" data-theme="fluid" type="button"><span class="theme-swatch-preview fluid" aria-hidden="true"></span><span>Fluid</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sp-group" id="fluid-settings-group" style="display:none">
+    <div class="sp-group-label">Palette</div>
+    <div class="palette-grid">
+      <button class="palette-btn active" data-palette="original"><span class="palette-dot" style="background:radial-gradient(circle at 40% 35%,#8b3a10,#18304e)"></span>Original</button>
+      <button class="palette-btn" data-palette="sumi"><span class="palette-dot" style="background:radial-gradient(circle at 40% 35%,#c52010,#1a1830)"></span>Sumi</button>
+      <button class="palette-btn" data-palette="bioluminescent"><span class="palette-dot" style="background:radial-gradient(circle at 40% 35%,#00e0b8,#5504e0)"></span>Biolum.</button>
+      <button class="palette-btn" data-palette="alchemical"><span class="palette-dot" style="background:radial-gradient(circle at 40% 35%,#e8b010,#2634b8)"></span>Alchemic</button>
+      <button class="palette-btn" data-palette="ember"><span class="palette-dot" style="background:radial-gradient(circle at 40% 35%,#f26608,#220603)"></span>Ember</button>
+    </div>
+    <div class="sp-group-label" style="margin-top:14px">Simulation</div>
+    <div class="sp-row">
+      <span class="sp-row-label">Pressure iters</span>
+      <div class="sp-slider-wrap"><input type="range" class="sp-range" id="fl-pressure" min="5" max="60" value="25"><span class="sp-val" id="fl-pressure-val">25</span></div>
+    </div>
+    <div class="sp-row">
+      <span class="sp-row-label">Ink persistence</span>
+      <div class="sp-slider-wrap"><input type="range" class="sp-range" id="fl-dye" min="0" max="100" value="60"><span class="sp-val" id="fl-dye-val">1.0×</span></div>
+    </div>
+    <div class="sp-row">
+      <span class="sp-row-label">Turbulence</span>
+      <div class="sp-slider-wrap"><input type="range" class="sp-range" id="fl-curl" min="0" max="100" value="50"><span class="sp-val" id="fl-curl-val">1.0×</span></div>
+    </div>
+    <div class="sp-row">
+      <span class="sp-row-label">Exposure</span>
+      <div class="sp-slider-wrap"><input type="range" class="sp-range" id="fl-exposure" min="10" max="200" value="100"><span class="sp-val" id="fl-exposure-val">1.0×</span></div>
+    </div>
+    <div class="sp-row">
+      <span class="sp-row-label">Saturation</span>
+      <div class="sp-slider-wrap"><input type="range" class="sp-range" id="fl-saturation" min="0" max="200" value="120"><span class="sp-val" id="fl-saturation-val">1.2×</span></div>
+    </div>
+    <button class="sp-toggle" id="clear-ink-btn" style="width:100%;margin-top:8px;letter-spacing:2px;font-size:9px;padding:6px">CLEAR INK</button>
+  </div>
+
+  <div id="particle-settings-groups">
   <div class="sp-group">
     <div class="sp-group-label">Display</div>
     <div class="sp-row">
@@ -319,6 +440,7 @@
       <button class="sp-toggle" id="reduced-motion-toggle">AUTO</button>
     </div>
   </div>
+  </div><!-- #particle-settings-groups -->
 
   <div class="sp-footer">changes saved automatically</div>
 </div>
@@ -329,6 +451,7 @@
 // ============================================================
 const CONFIG_DEFAULTS = {
   targetFps: 75,          // Monitor refresh rate: 60 | 75 | 120 | 144 | 165 | 240
+  theme: 'particle',
   audioMuted: false,
   audioVolume: 0.65,      // 0–1 (maps to master gain 0–0.20)
   particleScale: 1.0,     // 0.25–1.0: fraction of each state's full particle count
@@ -338,11 +461,19 @@ const CONFIG_DEFAULTS = {
   echoAfterimage: true,
   chromaticAberration: true,
   reducedMotionOverride: null, // null = follow OS, true = always on, false = always off
+  fluidPalette:    'original',
+  fluidPressure:   25,
+  fluidExposure:   1.0,
+  fluidSaturation: 1.2,
+  fluidDyeScale:   1.0,
+  fluidCurlScale:  1.0,
 };
 
 const CONFIG = (() => {
   try {
     const saved = JSON.parse(localStorage.getItem('claude-pulse-config') || '{}');
+    // Migrate old 'watercolor' theme saves to 'particle'
+    if (saved.theme === 'watercolor') saved.theme = 'particle';
     return Object.assign({}, CONFIG_DEFAULTS, saved);
   } catch { return Object.assign({}, CONFIG_DEFAULTS); }
 })();
@@ -561,6 +692,18 @@ for (const [state, cfg] of Object.entries(STATE_CONFIGS)) {
   STATE_COLORS_HSL[state] = cfg.colors.map(c => rgbToHsl(c[0], c[1], c[2]));
 }
 
+function getThemeConfig(state) {
+  return STATE_CONFIGS[state];
+}
+
+function getThemeSpring(state) {
+  return SPRING_PRESETS[state];
+}
+
+function getThemeColorHslMap() {
+  return STATE_COLORS_HSL;
+}
+
 const STATE_DOT_COLORS = {
   OFF: '#333', IDLE: '#5599bb', RECEIVING: '#aabbdd', THINKING: '#9977dd',
   WORKING: '#ddaa44', PLANNING: '#44ccaa', DELEGATING: '#bb66ee', COMPLETE: '#ddcc77'
@@ -601,6 +744,7 @@ let flashAlpha = 0;
 let flashScale = 0.95;
 let burstTimer = 0;
 let ripples = [];
+let lastAppliedTheme = null;
 
 // Mouse gravity well
 let mouseX = cx, mouseY = cy;
@@ -668,7 +812,7 @@ function generateCrystalTargets(count) {
 }
 
 function createParticle(i, total, entering) {
-  const cfg = STATE_CONFIGS[currentState];
+  const cfg = getThemeConfig(currentState);
   const angle = (i / total) * Math.PI * 2 + Math.random() * 0.5;
   const r = cfg.orbit ? cfg.orbit * (0.5 + Math.random() * 0.8) : Math.random() * 200;
   const color = cfg.colors[Math.floor(Math.random() * cfg.colors.length)];
@@ -774,8 +918,8 @@ function ensureParticlesAnimated(count) {
 }
 
 // --- State transition ---
-function transitionTo(newState) {
-  if (newState === currentState && transitionProgress >= 1) return;
+function transitionTo(newState, force) {
+  if (!force && newState === currentState && transitionProgress >= 1) return;
 
   const now = performance.now();
   lastTransitionTime = now;
@@ -789,7 +933,7 @@ function transitionTo(newState) {
   transitionDuration = TRANSITION_TIMING[newState].enter;
   transitionEasing = getTransitionEasing(prevState, newState);
 
-  const cfg = STATE_CONFIGS[newState];
+  const cfg = getThemeConfig(newState);
   const effectiveCount = Math.max(1, Math.round(cfg.count * CONFIG.particleScale * (reducedMotion ? 0.5 : 1)));
 
   ensureParticlesAnimated(effectiveCount);
@@ -808,11 +952,9 @@ function transitionTo(newState) {
     echoStartTime = now;
   }
 
-  // Flash on RECEIVING (reduced for Step 6)
   if (newState === 'RECEIVING' && !reducedMotion) {
     flashAlpha = 0.35;
     flashScale = 0.95;
-    // Double ring ripples
     const stateColor = cfg.colors[0];
     ripples.push({ x: cx, y: cy, radius: 0, alpha: 0.8, color: stateColor, strokeWidth: 2 });
     setTimeout(() => {
@@ -859,8 +1001,6 @@ function transitionTo(newState) {
     p.particleEasing = transitionEasing;
 
     // Bleed off residual velocity so the new state's spring starts clean.
-    // Without this, underdamped states (THINKING) pass oscillatory momentum
-    // into the next state, causing it to fight the new spring for several frames.
     p.vx *= 0.25;
     p.vy *= 0.25;
     p.radiusVel = (p.radiusVel || 0) * 0.25;
@@ -969,8 +1109,8 @@ function update(now) {
     if (nextData) applyOverlayData(nextData);
   }
 
-  const cfg = STATE_CONFIGS[currentState];
-  const spring = SPRING_PRESETS[currentState];
+  const cfg = getThemeConfig(currentState);
+  const spring = getThemeSpring(currentState);
 
   // Step 6: Spring-driven shake decay
   if (reducedMotion) {
@@ -982,7 +1122,7 @@ function update(now) {
     shakeY = shakeResultY.position; shakeVy = shakeResultY.velocity;
   }
 
-  // Flash decay (Step 6: faster decay) — dt-normalized so rate is fps-independent
+  // Flash decay — dt-normalized so rate is fps-independent
   if (reducedMotion) {
     flashAlpha = 0;
   } else {
@@ -1054,7 +1194,7 @@ function update(now) {
         p.scale = 0.85 + 0.15 * ep;
         // Don't override alpha for entering particles until enter is done
         if (enterProgress > 0) {
-          const targetA = STATE_CONFIGS[currentState].particleAlpha * (0.5 + Math.random() * 0.5);
+          const targetA = getThemeConfig(currentState).particleAlpha * (0.5 + Math.random() * 0.5);
           p.alpha = p.targetAlpha !== undefined ? p.targetAlpha * ep : targetA * ep;
         }
       } else if (enterProgress >= 1) {
@@ -1133,7 +1273,7 @@ function update(now) {
     // Flow field + mouse gravity well (applied before state spring physics)
     if (!reducedMotion && !p.burst) {
       if (CONFIG.flowField) {
-        const fs = FLOW_STRENGTH[currentState] || 0;
+          const fs = FLOW_STRENGTH[currentState] || 0;
         if (fs > 0) {
           const fa = flowAngle(p.x, p.y, time);
           p.x += Math.cos(fa) * fs * dt * BASE_FPS;
@@ -1337,12 +1477,11 @@ function update(now) {
 
 // --- Render ---
 function render(now) {
-  const cfg = STATE_CONFIGS[currentState];
+  const cfg = getThemeConfig(currentState);
   const frameStart = performance.now();
 
   // Trail effect — alpha normalized for CONFIG.targetFps so trail length is
-  // consistent regardless of refresh rate (higher Hz = more frames = faster decay
-  // without normalization; this formula compensates by adjusting alpha per frame)
+  // consistent regardless of refresh rate
   const trailAlpha = reducedMotion
     ? Math.min(1, cfg.trail * 2)
     : 1 - Math.pow(1 - cfg.trail, BASE_FPS / CONFIG.targetFps);
@@ -1411,7 +1550,7 @@ function render(now) {
     }
   }
 
-  // Particles (Step 4: use p.scale)
+  // Particles
   for (const p of particles) {
     ctx.globalAlpha = p.alpha;
     ctx.fillStyle = `rgb(${p.color[0]},${p.color[1]},${p.color[2]})`;
@@ -1421,7 +1560,6 @@ function render(now) {
     ctx.arc(p.x, p.y, renderSize, 0, Math.PI * 2);
     ctx.fill();
 
-    // Glow for larger particles
     if (renderSize > 2.5) {
       ctx.globalAlpha = p.alpha * 0.2;
       ctx.beginPath();
@@ -1486,7 +1624,8 @@ function render(now) {
     const glowAlpha = currentState === 'COMPLETE'
       ? 0.15 + Math.sin(time * 2) * 0.1
       : 0.08;
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 200);
+    const glowRadius = 200;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowRadius);
     const c = cfg.colors[0];
     grad.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},${glowAlpha})`);
     grad.addColorStop(1, 'rgba(10,10,15,0)');
@@ -1665,15 +1804,797 @@ const initAudioOnce = () => { initAudio(); transitionAudio(currentState); };
 document.addEventListener('click', initAudioOnce, { once: true });
 document.addEventListener('keydown', initAudioOnce, { once: true });
 
-// --- Animation loop ---
-function frame(now) {
-  update(now);
-  render(now);
-  requestAnimationFrame(frame);
+// ============================================================
+// FLUID RENDERER (WebGL2)
+// ============================================================
+
+const SIM_RES  = 256;
+const DYE_RES  = 512;
+
+const FL_DISPLAY = {
+  pressureIterations: 25,
+  exposure:    1.0,
+  saturation:  1.2,
+  dyeScale:    1.0,
+  curlScale:   1.0,
+};
+
+const FL_PALETTES = {
+  original: {
+    IDLE:       { colors: [[0.08, 0.13, 0.22], [0.06, 0.10, 0.18]] },
+    RECEIVING:  { colors: [[0.10, 0.28, 0.55], [0.14, 0.36, 0.68]] },
+    THINKING:   { colors: [[0.18, 0.10, 0.48], [0.04, 0.30, 0.26], [0.38, 0.14, 0.06]] },
+    WORKING:    { colors: [[0.38, 0.14, 0.06], [0.28, 0.10, 0.04], [0.48, 0.18, 0.05]] },
+    PLANNING:   { colors: [[0.04, 0.30, 0.26], [0.03, 0.22, 0.19], [0.06, 0.36, 0.30]] },
+    DELEGATING: { colors: [[0.18, 0.10, 0.48], [0.12, 0.06, 0.36], [0.22, 0.14, 0.55]] },
+    COMPLETE:   { colors: [[0.32, 0.22, 0.04], [0.24, 0.16, 0.02], [0.28, 0.19, 0.03]] },
+  },
+  sumi: {
+    IDLE:       { colors: [[0.06, 0.07, 0.15], [0.04, 0.05, 0.12]] },
+    RECEIVING:  { colors: [[0.75, 0.77, 0.84], [0.60, 0.62, 0.70]] },
+    THINKING:   { colors: [[0.08, 0.10, 0.28], [0.05, 0.07, 0.20], [0.10, 0.12, 0.32]] },
+    WORKING:    { colors: [[0.80, 0.14, 0.07], [0.62, 0.09, 0.05], [0.70, 0.11, 0.06]] },
+    PLANNING:   { colors: [[0.12, 0.20, 0.34], [0.08, 0.14, 0.24], [0.10, 0.17, 0.30]] },
+    DELEGATING: { colors: [[0.08, 0.10, 0.28], [0.80, 0.14, 0.07], [0.10, 0.14, 0.30]] },
+    COMPLETE:   { colors: [[0.78, 0.58, 0.08], [0.62, 0.46, 0.05], [0.70, 0.52, 0.06]] },
+  },
+  bioluminescent: {
+    IDLE:       { colors: [[0.01, 0.08, 0.13], [0.01, 0.06, 0.10]] },
+    RECEIVING:  { colors: [[0.02, 0.88, 0.72], [0.02, 0.70, 0.58]] },
+    THINKING:   { colors: [[0.28, 0.02, 0.90], [0.18, 0.01, 0.65], [0.35, 0.03, 0.95]] },
+    WORKING:    { colors: [[0.02, 0.86, 0.42], [0.32, 0.95, 0.02], [0.02, 0.70, 0.36]] },
+    PLANNING:   { colors: [[0.02, 0.55, 0.94], [0.01, 0.38, 0.72], [0.02, 0.65, 0.98]] },
+    DELEGATING: { colors: [[0.02, 0.88, 0.72], [0.78, 0.02, 0.90], [0.02, 0.90, 0.30]] },
+    COMPLETE:   { colors: [[0.92, 0.90, 0.28], [0.78, 0.76, 0.16], [0.85, 0.83, 0.22]] },
+  },
+  alchemical: {
+    IDLE:       { colors: [[0.07, 0.06, 0.13], [0.05, 0.04, 0.10]] },
+    RECEIVING:  { colors: [[0.70, 0.72, 0.78], [0.55, 0.57, 0.64]] },
+    THINKING:   { colors: [[0.16, 0.20, 0.74], [0.10, 0.13, 0.54], [0.20, 0.24, 0.82]] },
+    WORKING:    { colors: [[0.74, 0.15, 0.06], [0.58, 0.10, 0.04], [0.66, 0.12, 0.05]] },
+    PLANNING:   { colors: [[0.07, 0.44, 0.32], [0.04, 0.30, 0.22], [0.08, 0.50, 0.36]] },
+    DELEGATING: { colors: [[0.16, 0.20, 0.74], [0.07, 0.44, 0.32], [0.74, 0.15, 0.06]] },
+    COMPLETE:   { colors: [[0.80, 0.62, 0.04], [0.66, 0.50, 0.03], [0.73, 0.56, 0.03]] },
+  },
+  ember: {
+    IDLE:       { colors: [[0.14, 0.04, 0.02], [0.10, 0.03, 0.01]] },
+    RECEIVING:  { colors: [[0.90, 0.84, 0.68], [0.75, 0.70, 0.55]] },
+    THINKING:   { colors: [[0.48, 0.10, 0.36], [0.34, 0.06, 0.25], [0.56, 0.12, 0.42]] },
+    WORKING:    { colors: [[0.96, 0.40, 0.04], [0.82, 0.26, 0.02], [0.88, 0.33, 0.03]] },
+    PLANNING:   { colors: [[0.58, 0.28, 0.06], [0.44, 0.20, 0.03], [0.52, 0.24, 0.05]] },
+    DELEGATING: { colors: [[0.96, 0.40, 0.04], [0.68, 0.10, 0.24], [0.88, 0.64, 0.02]] },
+    COMPLETE:   { colors: [[0.80, 0.58, 0.08], [0.66, 0.44, 0.05], [0.73, 0.51, 0.06]] },
+  },
+};
+
+const FLUID_STATE_CFG = {
+  OFF: {
+    speed: 0,      weight: 0,     radius: 0.006, curvature: 0,   noiseFreq: 0.3,
+    dyeDiss: 0.980, velDiss: 0.82, curl: 0,
+    inkColors: [],
+    labelColor: '#9aa0a8',
+  },
+  IDLE: {
+    speed: 0.04,   weight: 0.18,  radius: 0.006, curvature: 0.8,  noiseFreq: 0.4,
+    fanSpread: 0.3, fanWeight: 0.7, fanVelScale: 0.5,
+    dyeDiss: 0.9985, velDiss: 0.970, curl: 8,
+    inkColors: [[0.08, 0.13, 0.22], [0.06, 0.10, 0.18]],
+    labelColor: '#6b8aab',
+  },
+  RECEIVING: {
+    speed: 0.28,   weight: 0.55,  radius: 0.007, curvature: 0.2,  noiseFreq: 1.2,
+    fanSpread: 1.8, fanWeight: 0.8, fanVelScale: 1.1,
+    dyeDiss: 0.9940, velDiss: 0.920, curl: 18,
+    inkColors: [[0.10, 0.28, 0.55], [0.14, 0.36, 0.68]],
+    pressure: t => Math.exp(-t * 2.2) * 1.4 + 0.25,
+    labelColor: '#2a5f9e',
+  },
+  THINKING: {
+    speed: 0.12,   weight: 0.38,  radius: 0.007, curvature: 3.2,  noiseFreq: 0.6,
+    fanSpread: 0.6, fanWeight: 0.6, fanVelScale: 0.7,
+    dyeDiss: 0.9972, velDiss: 0.960, curl: 44,
+    inkColors: [[0.18, 0.10, 0.48], [0.04, 0.30, 0.26], [0.38, 0.14, 0.06]],
+    labelColor: '#5540a0',
+  },
+  WORKING: {
+    speed: 0.32,   weight: 0.90,  radius: 0.010, curvature: 1.4,  noiseFreq: 1.8,
+    fanSpread: 2.2, fanWeight: 0.85, fanVelScale: 1.2,
+    dyeDiss: 0.9910, velDiss: 0.900, curl: 60,
+    inkColors: [[0.38, 0.14, 0.06], [0.28, 0.10, 0.04], [0.48, 0.18, 0.05]],
+    labelColor: '#8b3a10',
+  },
+  PLANNING: {
+    speed: 0.16,   weight: 0.42,  radius: 0.008, curvature: 0.5,  noiseFreq: 0.3,
+    fanSpread: 0.4, fanWeight: 0.75, fanVelScale: 0.9,
+    dyeDiss: 0.9955, velDiss: 0.930, curl: 18,
+    inkColors: [[0.04, 0.30, 0.26], [0.03, 0.22, 0.19], [0.06, 0.36, 0.30]],
+    labelColor: '#1a6b60',
+  },
+  DELEGATING: {
+    speed: 0.22,   weight: 0.65,  radius: 0.009, curvature: 2.2,  noiseFreq: 1.4,
+    fanSpread: Math.PI * 1.1, fanWeight: 0.9, fanVelScale: 1.0,
+    dyeDiss: 0.9925, velDiss: 0.905, curl: 34,
+    inkColors: [[0.18, 0.10, 0.48], [0.12, 0.06, 0.36], [0.22, 0.14, 0.55]],
+    labelColor: '#5540a0',
+  },
+  COMPLETE: {
+    speed: 0.08,   weight: 0.50,  radius: 0.009, curvature: 1.0,  noiseFreq: 0.5,
+    fanSpread: 0.9, fanWeight: 0.65, fanVelScale: 0.6,
+    dyeDiss: 0.9970, velDiss: 0.948, curl: 10,
+    inkColors: [[0.32, 0.22, 0.04], [0.24, 0.16, 0.02], [0.28, 0.19, 0.03]],
+    pressure: t => Math.max(0, 1.0 - t * 0.28),
+    labelColor: '#7a5a10',
+  },
+};
+
+// Fluid top-level state (declared before fl_initGL so they can be set at top level)
+let fluidReady = false;
+let fl_gl = null;
+let fl_canvas = null;
+let FL_P = null;
+let fl_vel, fl_dye, fl_pressure, fl_divergence, fl_curlFBO, fl_blurTemp;
+let fl_vao, fl_vbuf;
+let fl_curState = 'OFF';
+let fl_stateTime = 0;
+let fl_simTime = 0;
+
+// Smooth noise utilities (fl_-namespaced)
+function fl_fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+function fl_lerp(a, b, t) { return a + (b - a) * t; }
+function fl_hash1(n) {
+  n = (n ^ (n << 13)) >>> 0;
+  n = (n ^ (n >> 7))  >>> 0;
+  n = (n ^ (n << 17)) >>> 0;
+  return (n >>> 0) / 0xffffffff;
+}
+function fl_vnoise(x) {
+  const i = Math.floor(x);
+  const f = x - i;
+  return fl_lerp(fl_hash1(i), fl_hash1(i + 1), fl_fade(f));
+}
+function fl_randn() {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
-// Init particles for OFF state
-ensureParticlesAnimated(STATE_CONFIGS.OFF.count);
+const fl_brush = {
+  x:      0.5,  y:     0.5,
+  angle:  0,
+  colorA: [0, 0, 0],
+  colorB: [0, 0, 0],
+  colorT: 1.0,
+  colorIdx: 0,
+  noiseT: 0,
+};
+
+const fl_mouse = { x: 0.5, y: 0.5, dx: 0, dy: 0, down: false };
+let fl_lastMX = 0.5, fl_lastMY = 0.5;
+
+// Mouse listener for fluid (guards in fl_injectMouse)
+document.addEventListener('mousemove', e => {
+  if (!fl_canvas) return;
+  const r = fl_canvas.getBoundingClientRect();
+  const x =      (e.clientX - r.left) / r.width;
+  const y = 1 - ((e.clientY - r.top)  / r.height);
+  fl_mouse.dx = x - fl_lastMX;
+  fl_mouse.dy = y - fl_lastMY;
+  fl_mouse.x = x; fl_mouse.y = y;
+  fl_lastMX = x; fl_lastMY = y;
+});
+
+function fl_activeCfg() { return FLUID_STATE_CFG[fl_curState] || FLUID_STATE_CFG.OFF; }
+
+function fl_brushColor() {
+  const cfg = fl_activeCfg();
+  if (!cfg.inkColors.length) return [0, 0, 0];
+  const c = cfg.inkColors[fl_brush.colorIdx % cfg.inkColors.length];
+  const t = Math.min(fl_brush.colorT, 1);
+  return [
+    fl_lerp(fl_brush.colorA[0], c[0], t),
+    fl_lerp(fl_brush.colorA[1], c[1], t),
+    fl_lerp(fl_brush.colorA[2], c[2], t),
+  ];
+}
+
+function fl_startColorTransition(newCfg) {
+  fl_brush.colorA  = fl_brushColor();
+  fl_brush.colorIdx = 0;
+  fl_brush.colorT  = 0;
+}
+
+function fl_applyPalette(name) {
+  const p = FL_PALETTES[name];
+  if (!p) return;
+  for (const [state, cfg] of Object.entries(p)) {
+    if (FLUID_STATE_CFG[state]) FLUID_STATE_CFG[state].inkColors = cfg.colors;
+  }
+  document.querySelectorAll('.palette-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.palette === name);
+  });
+}
+
+function fl_setState(newState, data) {
+  if (newState === fl_curState) return;
+  fl_curState  = newState;
+  fl_stateTime = 0;
+  fl_startColorTransition(fl_activeCfg());
+}
+
+// WebGL helpers (all fl_-namespaced, use fl_gl closure)
+function fl_compileShader(type, src) {
+  const s = fl_gl.createShader(type);
+  fl_gl.shaderSource(s, src);
+  fl_gl.compileShader(s);
+  if (!fl_gl.getShaderParameter(s, fl_gl.COMPILE_STATUS)) {
+    console.error(fl_gl.getShaderInfoLog(s), src.slice(0, 200));
+    return null;
+  }
+  return s;
+}
+
+function fl_makeProgram(vsSrc, fsSrc) {
+  const vs = fl_compileShader(fl_gl.VERTEX_SHADER,   vsSrc);
+  const fs = fl_compileShader(fl_gl.FRAGMENT_SHADER, fsSrc);
+  const p  = fl_gl.createProgram();
+  fl_gl.attachShader(p, vs); fl_gl.attachShader(p, fs);
+  fl_gl.linkProgram(p);
+  if (!fl_gl.getProgramParameter(p, fl_gl.LINK_STATUS)) {
+    console.error(fl_gl.getProgramInfoLog(p)); return null;
+  }
+  p.u = {};
+  const n = fl_gl.getProgramParameter(p, fl_gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++) {
+    const info = fl_gl.getActiveUniform(p, i);
+    p.u[info.name] = fl_gl.getUniformLocation(p, info.name);
+  }
+  return p;
+}
+
+function fl_makeFBO(w, h, ifmt, fmt, type, filter) {
+  const tex = fl_gl.createTexture();
+  fl_gl.activeTexture(fl_gl.TEXTURE0);
+  fl_gl.bindTexture(fl_gl.TEXTURE_2D, tex);
+  fl_gl.texParameteri(fl_gl.TEXTURE_2D, fl_gl.TEXTURE_MIN_FILTER, filter);
+  fl_gl.texParameteri(fl_gl.TEXTURE_2D, fl_gl.TEXTURE_MAG_FILTER, filter);
+  fl_gl.texParameteri(fl_gl.TEXTURE_2D, fl_gl.TEXTURE_WRAP_S, fl_gl.CLAMP_TO_EDGE);
+  fl_gl.texParameteri(fl_gl.TEXTURE_2D, fl_gl.TEXTURE_WRAP_T, fl_gl.CLAMP_TO_EDGE);
+  fl_gl.texImage2D(fl_gl.TEXTURE_2D, 0, ifmt, w, h, 0, fmt, type, null);
+  const fbo = fl_gl.createFramebuffer();
+  fl_gl.bindFramebuffer(fl_gl.FRAMEBUFFER, fbo);
+  fl_gl.framebufferTexture2D(fl_gl.FRAMEBUFFER, fl_gl.COLOR_ATTACHMENT0, fl_gl.TEXTURE_2D, tex, 0);
+  fl_gl.viewport(0, 0, w, h);
+  fl_gl.clear(fl_gl.COLOR_BUFFER_BIT);
+  return {
+    fbo, tex, width: w, height: h,
+    bind(unit) { fl_gl.activeTexture(fl_gl.TEXTURE0 + unit); fl_gl.bindTexture(fl_gl.TEXTURE_2D, tex); return unit; },
+  };
+}
+
+function fl_makeDoubleFBO(w, h, ifmt, fmt, type, filter) {
+  let a = fl_makeFBO(w, h, ifmt, fmt, type, filter);
+  let b = fl_makeFBO(w, h, ifmt, fmt, type, filter);
+  return {
+    width: w, height: h,
+    get read()  { return a; },
+    get write() { return b; },
+    swap()      { [a, b] = [b, a]; },
+  };
+}
+
+function fl_blit(target) {
+  if (target) {
+    fl_gl.bindFramebuffer(fl_gl.FRAMEBUFFER, target.fbo);
+    fl_gl.viewport(0, 0, target.width, target.height);
+  } else {
+    fl_gl.bindFramebuffer(fl_gl.FRAMEBUFFER, null);
+    fl_gl.viewport(0, 0, fl_gl.drawingBufferWidth, fl_gl.drawingBufferHeight);
+  }
+  fl_gl.bindVertexArray(fl_vao);
+  fl_gl.drawArrays(fl_gl.TRIANGLE_STRIP, 0, 4);
+  fl_gl.bindVertexArray(null);
+}
+
+function fl_u1f(p, n, v)        { const l = p.u[n]; if (l != null) fl_gl.uniform1f(l, v); }
+function fl_u1i(p, n, v)        { const l = p.u[n]; if (l != null) fl_gl.uniform1i(l, v); }
+function fl_u2f(p, n, a, b)     { const l = p.u[n]; if (l != null) fl_gl.uniform2f(l, a, b); }
+function fl_u3f(p, n, a, b, c)  { const l = p.u[n]; if (l != null) fl_gl.uniform3f(l, a, b, c); }
+
+function fl_initFBOs() {
+  const a = fl_canvas.width / fl_canvas.height;
+  const sw = a >= 1 ? Math.round(SIM_RES * a) : SIM_RES;
+  const sh = a >= 1 ? SIM_RES : Math.round(SIM_RES / a);
+  const dw = a >= 1 ? Math.round(DYE_RES * a) : DYE_RES;
+  const dh = a >= 1 ? DYE_RES : Math.round(DYE_RES / a);
+  const TEX_FILTER = fl_gl._halfFloatLinear ? fl_gl.LINEAR : fl_gl.NEAREST;
+  fl_vel        = fl_makeDoubleFBO(sw, sh, fl_gl.RG16F,   fl_gl.RG,   fl_gl.HALF_FLOAT, TEX_FILTER);
+  fl_pressure   = fl_makeDoubleFBO(sw, sh, fl_gl.R16F,    fl_gl.RED,  fl_gl.HALF_FLOAT, fl_gl.NEAREST);
+  fl_divergence = fl_makeFBO(sw, sh, fl_gl.R16F,    fl_gl.RED,  fl_gl.HALF_FLOAT, fl_gl.NEAREST);
+  fl_curlFBO    = fl_makeFBO(sw, sh, fl_gl.R16F,    fl_gl.RED,  fl_gl.HALF_FLOAT, fl_gl.NEAREST);
+  fl_dye        = fl_makeDoubleFBO(dw, dh, fl_gl.RGBA16F, fl_gl.RGBA, fl_gl.HALF_FLOAT, TEX_FILTER);
+  fl_blurTemp   = fl_makeFBO(dw, dh, fl_gl.RGBA16F, fl_gl.RGBA, fl_gl.HALF_FLOAT, fl_gl.LINEAR);
+}
+
+function fl_resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (fl_canvas.width !== w || fl_canvas.height !== h) {
+    fl_canvas.width = w; fl_canvas.height = h;
+    fl_initFBOs();
+  }
+}
+
+function fl_step(dt) {
+  const cfg = fl_activeCfg();
+  const sw  = fl_vel.width, sh = fl_vel.height;
+  const tsx = 1 / sw, tsy = 1 / sh;
+  const curlStrength = cfg.curl * FL_DISPLAY.curlScale * 0.0012;
+
+  fl_gl.useProgram(FL_P.curl);
+  fl_u2f(FL_P.curl, 'uTex', tsx, tsy);
+  fl_u1i(FL_P.curl, 'uVel', fl_vel.read.bind(0));
+  fl_blit(fl_curlFBO);
+
+  fl_gl.useProgram(FL_P.vort);
+  fl_u2f(FL_P.vort, 'uTex', tsx, tsy);
+  fl_u1f(FL_P.vort, 'uStrength', curlStrength);
+  fl_u1f(FL_P.vort, 'uDt', dt);
+  fl_u1i(FL_P.vort, 'uVel',  fl_vel.read.bind(0));
+  fl_u1i(FL_P.vort, 'uCurl', fl_curlFBO.bind(1));
+  fl_blit(fl_vel.write);
+  fl_vel.swap();
+
+  fl_gl.useProgram(FL_P.advect);
+  fl_u2f(FL_P.advect, 'uTex', tsx, tsy);
+  fl_u1f(FL_P.advect, 'uDt',   dt);
+  fl_u1f(FL_P.advect, 'uDiss', cfg.velDiss);
+  fl_u1i(FL_P.advect, 'uVel', fl_vel.read.bind(0));
+  fl_u1i(FL_P.advect, 'uSrc', fl_vel.read.bind(1));
+  fl_blit(fl_vel.write);
+  fl_vel.swap();
+
+  fl_gl.useProgram(FL_P.div);
+  fl_u2f(FL_P.div, 'uTex', tsx, tsy);
+  fl_u1i(FL_P.div, 'uVel', fl_vel.read.bind(0));
+  fl_blit(fl_divergence);
+
+  fl_gl.useProgram(FL_P.pressure);
+  fl_u2f(FL_P.pressure, 'uTex', tsx, tsy);
+  fl_u1i(FL_P.pressure, 'uDiv', fl_divergence.bind(0));
+  for (let i = 0; i < FL_DISPLAY.pressureIterations; i++) {
+    fl_u1i(FL_P.pressure, 'uPressure', fl_pressure.read.bind(1));
+    fl_blit(fl_pressure.write);
+    fl_pressure.swap();
+  }
+
+  fl_gl.useProgram(FL_P.grad);
+  fl_u2f(FL_P.grad, 'uTex', tsx, tsy);
+  fl_u1i(FL_P.grad, 'uPressure', fl_pressure.read.bind(0));
+  fl_u1i(FL_P.grad, 'uVel',      fl_vel.read.bind(1));
+  fl_blit(fl_vel.write);
+  fl_vel.swap();
+
+  const dyeDiss = 1.0 - (1.0 - cfg.dyeDiss) * FL_DISPLAY.dyeScale;
+  fl_gl.useProgram(FL_P.advect);
+  fl_u2f(FL_P.advect, 'uTex', 1 / fl_dye.width, 1 / fl_dye.height);
+  fl_u1f(FL_P.advect, 'uDt',   dt);
+  fl_u1f(FL_P.advect, 'uDiss', dyeDiss);
+  fl_u1i(FL_P.advect, 'uVel', fl_vel.read.bind(0));
+  fl_u1i(FL_P.advect, 'uSrc', fl_dye.read.bind(1));
+  fl_blit(fl_dye.write);
+  fl_dye.swap();
+}
+
+function fl_splat(x, y, dx, dy, color, radius) {
+  const asp  = fl_canvas.width / fl_canvas.height;
+  const spd  = Math.hypot(dx, dy);
+  const ndx  = spd > 0 ? dx / spd : 0;
+  const ndy  = spd > 0 ? dy / spd : 0;
+
+  fl_gl.useProgram(FL_P.splat);
+  fl_u1f(FL_P.splat, 'uAspect', asp);
+  fl_u1f(FL_P.splat, 'uRadius', radius * radius);
+  fl_u2f(FL_P.splat, 'uPoint',  x, y);
+  fl_u2f(FL_P.splat, 'uStrokeDir', ndx, ndy);
+
+  fl_u3f(FL_P.splat, 'uColor', dx, dy, 0);
+  fl_u1i(FL_P.splat, 'uTarget', fl_vel.read.bind(0));
+  fl_blit(fl_vel.write);
+  fl_vel.swap();
+
+  fl_u3f(FL_P.splat, 'uColor', color[0], color[1], color[2]);
+  fl_u1i(FL_P.splat, 'uTarget', fl_dye.read.bind(0));
+  fl_blit(fl_dye.write);
+  fl_dye.swap();
+}
+
+function fl_clearInk() {
+  fl_gl.bindFramebuffer(fl_gl.FRAMEBUFFER, fl_dye.read.fbo);
+  fl_gl.clearColor(0, 0, 0, 1); fl_gl.clear(fl_gl.COLOR_BUFFER_BIT);
+  fl_gl.bindFramebuffer(fl_gl.FRAMEBUFFER, fl_dye.write.fbo);
+  fl_gl.clear(fl_gl.COLOR_BUFFER_BIT);
+}
+
+function fl_blurDye() {
+  fl_gl.useProgram(FL_P.blur);
+  fl_u1i(FL_P.blur, 'uSrc', fl_dye.read.bind(0));
+  fl_u2f(FL_P.blur, 'uDir', 1 / fl_dye.width, 0);
+  fl_blit(fl_blurTemp);
+
+  fl_u1i(FL_P.blur, 'uSrc', fl_blurTemp.bind(0));
+  fl_u2f(FL_P.blur, 'uDir', 0, 1 / fl_dye.height);
+  fl_blit(fl_dye.write);
+  fl_dye.swap();
+}
+
+function fl_render() {
+  fl_blurDye();
+  fl_gl.useProgram(FL_P.display);
+  fl_u1i(FL_P.display, 'uDye',        fl_dye.read.bind(0));
+  fl_u1i(FL_P.display, 'uVel',        fl_vel.read.bind(1));
+  fl_u1f(FL_P.display, 'uExposure',   FL_DISPLAY.exposure * 2.8);
+  fl_u1f(FL_P.display, 'uSaturation', FL_DISPLAY.saturation);
+  fl_u1f(FL_P.display, 'uTime',       fl_simTime);
+  fl_blit(null);
+}
+
+function fl_inject(dt) {
+  const cfg = fl_activeCfg();
+  fl_stateTime += dt;
+
+  if (cfg.speed <= 0 || !cfg.inkColors.length) return;
+
+  fl_brush.colorT = Math.min(1, fl_brush.colorT + dt * 1.4);
+
+  const cycleSpeed = cfg.inkColors.length > 1 ? 0.12 : 0;
+  const colorPhase = (fl_stateTime * cycleSpeed) % 1;
+  fl_brush.colorIdx = Math.floor(colorPhase * cfg.inkColors.length);
+
+  fl_brush.noiseT += dt;
+  const noiseVal = fl_vnoise(fl_brush.noiseT * cfg.noiseFreq) * 2 - 1;
+  const angularVel = noiseVal * cfg.curvature * 4.0;
+  fl_brush.angle += angularVel * dt;
+
+  const spd = cfg.speed;
+  const dx  = Math.cos(fl_brush.angle) * spd * dt;
+  const dy  = Math.sin(fl_brush.angle) * spd * dt;
+
+  fl_brush.x += dx;
+  fl_brush.y += dy;
+
+  const margin = 0.08;
+  if (fl_brush.x < margin)       fl_brush.angle += dt * 8;
+  if (fl_brush.x > 1 - margin)   fl_brush.angle -= dt * 8;
+  if (fl_brush.y < margin)       fl_brush.angle += dt * 8;
+  if (fl_brush.y > 1 - margin)   fl_brush.angle -= dt * 8;
+  fl_brush.x = Math.max(0.01, Math.min(0.99, fl_brush.x));
+  fl_brush.y = Math.max(0.01, Math.min(0.99, fl_brush.y));
+
+  const pressure = cfg.pressure ? cfg.pressure(fl_stateTime) : 1.0;
+  if (pressure <= 0.01) return;
+
+  const color = fl_brushColor();
+  const inkWeight = cfg.weight * pressure;
+  const dyeColor  = [color[0] * inkWeight, color[1] * inkWeight, color[2] * inkWeight];
+
+  const velScale  = spd * 18 * pressure;
+  fl_splat(fl_brush.x, fl_brush.y, dx * velScale, dy * velScale, dyeColor, cfg.radius);
+
+  if (cfg.inkColors.length > 1 && cfg.fanSpread > 0) {
+    const fanCount = cfg.inkColors.length - 1;
+    for (let i = 0; i < fanCount; i++) {
+      const t = (i + 1) / (fanCount + 1) - 0.5;
+      const fanAngle = fl_brush.angle + t * cfg.fanSpread;
+      const fc = cfg.inkColors[(fl_brush.colorIdx + i + 1) % cfg.inkColors.length];
+      const fw = inkWeight * cfg.fanWeight;
+      const fd = [fc[0] * fw, fc[1] * fw, fc[2] * fw];
+      fl_splat(
+        fl_brush.x + Math.cos(fanAngle) * 0.015,
+        fl_brush.y + Math.sin(fanAngle) * 0.015,
+        Math.cos(fanAngle) * velScale * cfg.fanVelScale,
+        Math.sin(fanAngle) * velScale * cfg.fanVelScale,
+        fd, cfg.radius * 0.75
+      );
+    }
+  }
+}
+
+function fl_injectMouse() {
+  if (!fluidReady || CONFIG.theme !== 'fluid') return;
+  const spd = Math.hypot(fl_mouse.dx, fl_mouse.dy);
+  if (spd < 0.0004) { fl_mouse.dx = 0; fl_mouse.dy = 0; return; }
+  const cfg   = fl_activeCfg();
+  const base  = cfg.inkColors.length
+    ? cfg.inkColors[Math.floor(fl_stateTime * 1.5) % cfg.inkColors.length]
+    : [0.3, 0.35, 0.55];
+  const dye   = [base[0] * 0.06, base[1] * 0.06, base[2] * 0.06];
+  fl_splat(fl_mouse.x, fl_mouse.y, fl_mouse.dx * 22, fl_mouse.dy * 22, dye, 0.006);
+  fl_mouse.dx = 0; fl_mouse.dy = 0;
+}
+
+function fl_initGL() {
+  fl_canvas = document.getElementById('fluid-canvas');
+  fl_gl = fl_canvas.getContext('webgl2');
+  if (!fl_gl) { console.error('WebGL2 not available'); return; }
+  fl_gl.getExtension('EXT_color_buffer_float');
+  fl_gl._halfFloatLinear = !!fl_gl.getExtension('OES_texture_half_float_linear');
+
+  // Shader sources
+  const VS = `#version 300 es
+layout(location = 0) in vec2 aPos;
+out vec2 vUv;
+void main() {
+  vUv = aPos * 0.5 + 0.5;
+  gl_Position = vec4(aPos, 0.0, 1.0);
+}`;
+
+  const ADVECT_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uVel;
+uniform sampler2D uSrc;
+uniform float uDt;
+uniform float uDiss;
+in vec2 vUv;
+out vec4 out0;
+void main() {
+  vec2 v = texture(uVel, vUv).xy;
+  vec2 p = clamp(vUv - uDt * v, vec2(0.0), vec2(1.0));
+  out0 = uDiss * texture(uSrc, p);
+}`;
+
+  const DIV_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uVel;
+uniform vec2 uTex;
+in vec2 vUv;
+out vec4 out0;
+void main() {
+  float L = texture(uVel, vUv - vec2(uTex.x, 0.0)).x;
+  float R = texture(uVel, vUv + vec2(uTex.x, 0.0)).x;
+  float B = texture(uVel, vUv - vec2(0.0, uTex.y)).y;
+  float T = texture(uVel, vUv + vec2(0.0, uTex.y)).y;
+  out0 = vec4(0.5 * (R - L + T - B), 0.0, 0.0, 1.0);
+}`;
+
+  const PRESSURE_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uPressure;
+uniform sampler2D uDiv;
+uniform vec2 uTex;
+in vec2 vUv;
+out vec4 out0;
+void main() {
+  float L = texture(uPressure, vUv - vec2(uTex.x, 0.0)).x;
+  float R = texture(uPressure, vUv + vec2(uTex.x, 0.0)).x;
+  float B = texture(uPressure, vUv - vec2(0.0, uTex.y)).x;
+  float T = texture(uPressure, vUv + vec2(0.0, uTex.y)).x;
+  float d = texture(uDiv, vUv).x;
+  out0 = vec4((L + R + B + T - d) * 0.25, 0.0, 0.0, 1.0);
+}`;
+
+  const GRAD_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uPressure;
+uniform sampler2D uVel;
+uniform vec2 uTex;
+in vec2 vUv;
+out vec4 out0;
+void main() {
+  float L = texture(uPressure, vUv - vec2(uTex.x, 0.0)).x;
+  float R = texture(uPressure, vUv + vec2(uTex.x, 0.0)).x;
+  float B = texture(uPressure, vUv - vec2(0.0, uTex.y)).x;
+  float T = texture(uPressure, vUv + vec2(0.0, uTex.y)).x;
+  vec2 v = texture(uVel, vUv).xy - 0.5 * vec2(R - L, T - B);
+  out0 = vec4(v, 0.0, 1.0);
+}`;
+
+  const CURL_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uVel;
+uniform vec2 uTex;
+in vec2 vUv;
+out vec4 out0;
+void main() {
+  float L = texture(uVel, vUv - vec2(uTex.x, 0.0)).y;
+  float R = texture(uVel, vUv + vec2(uTex.x, 0.0)).y;
+  float B = texture(uVel, vUv - vec2(0.0, uTex.y)).x;
+  float T = texture(uVel, vUv + vec2(0.0, uTex.y)).x;
+  out0 = vec4(R - L - T + B, 0.0, 0.0, 1.0);
+}`;
+
+  const VORT_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uVel;
+uniform sampler2D uCurl;
+uniform vec2 uTex;
+uniform float uStrength;
+uniform float uDt;
+in vec2 vUv;
+out vec4 out0;
+void main() {
+  float L = abs(texture(uCurl, vUv - vec2(uTex.x, 0.0)).x);
+  float R = abs(texture(uCurl, vUv + vec2(uTex.x, 0.0)).x);
+  float B = abs(texture(uCurl, vUv - vec2(0.0, uTex.y)).x);
+  float T = abs(texture(uCurl, vUv + vec2(0.0, uTex.y)).x);
+  float C = texture(uCurl, vUv).x;
+  vec2 force = normalize(vec2(T - B, R - L) + 1e-5) * C * uStrength;
+  vec2 v = texture(uVel, vUv).xy + force * uDt;
+  out0 = vec4(v, 0.0, 1.0);
+}`;
+
+  const SPLAT_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uTarget;
+uniform vec2 uPoint;
+uniform vec3 uColor;
+uniform float uRadius;
+uniform float uAspect;
+uniform vec2 uStrokeDir;
+in vec2 vUv;
+out vec4 out0;
+void main() {
+  vec2 p = vUv - uPoint;
+  p.x *= uAspect;
+  float d;
+  float dirLen = length(uStrokeDir);
+  if (dirLen > 0.001) {
+    vec2 along  = uStrokeDir / dirLen;
+    vec2 across = vec2(-along.y, along.x);
+    float a = dot(p, along);
+    float b = dot(p, across);
+    d = exp(-(a * a / (uRadius * 5.0) + b * b / uRadius));
+  } else {
+    d = exp(-dot(p, p) / uRadius);
+  }
+  out0 = texture(uTarget, vUv) + vec4(uColor * d, 0.0);
+}`;
+
+  const DISPLAY_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uDye;
+uniform sampler2D uVel;
+uniform float uExposure;
+uniform float uSaturation;
+uniform float uTime;
+in vec2 vUv;
+out vec4 out0;
+
+float hash(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+void main() {
+  vec2 vel  = texture(uVel, vUv).xy;
+  float spd = length(vel);
+  vec3 ink;
+
+  if (spd > 0.0008) {
+    vec2 dir = vel / spd;
+    float stepUV = 0.0055;
+    vec3  acc  = vec3(0.0);
+    float wSum = 0.0;
+    for (int i = -10; i <= 10; i++) {
+      vec2 uv = clamp(vUv + dir * float(i) * stepUV, vec2(0.0), vec2(1.0));
+      float w = exp(-float(i * i) * 0.045);
+      acc  += texture(uDye, uv).rgb * w;
+      wSum += w;
+    }
+    ink = acc / wSum;
+    float blend = smoothstep(0.001, 0.06, spd);
+    ink = mix(texture(uDye, vUv).rgb, ink, blend * 0.82);
+  } else {
+    ink = texture(uDye, vUv).rgb;
+  }
+
+  if (spd > 0.001) {
+    vec2 dir  = vel / spd;
+    float proj = dot(vUv * 55.0, dir);
+    float bristle = fract(sin(proj * 127.1 + dot(vUv, vec2(311.7, 74.3)) * 31.4) * 5831.2);
+    bristle = smoothstep(0.25, 0.75, bristle);
+    ink *= 0.88 + bristle * 0.14;
+  }
+
+  vec3 paper = vec3(0.941, 0.922, 0.878);
+  ink = max(ink, vec3(0.0));
+  ink *= uExposure;
+
+  float lum = dot(ink, vec3(0.2126, 0.7152, 0.0722));
+  ink = mix(vec3(lum), ink, uSaturation);
+
+  float density = length(ink);
+  vec3 inkHue   = density > 0.001 ? normalize(ink) : vec3(0.2, 0.16, 0.10);
+  vec3 c = paper * exp(-density * 2.2) + inkHue * (1.0 - exp(-density * 1.8)) * 0.72;
+
+  c = pow(clamp(c, 0.0, 1.0), vec3(1.0 / 2.2));
+
+  float grain = hash(vUv + fract(uTime * 0.017)) - 0.5;
+  c += grain * 0.008;
+
+  vec2 uv2 = vUv * 2.0 - 1.0;
+  float vign = dot(uv2, uv2) * 0.12;
+  c = mix(c, c * vec3(0.97, 0.95, 0.91), vign);
+
+  out0 = vec4(clamp(c, 0.0, 1.0), 1.0);
+}`;
+
+  const BLUR_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uSrc;
+uniform vec2 uDir;
+in vec2 vUv;
+out vec4 out0;
+void main() {
+  const float w[5] = float[](0.2270, 0.1945, 0.1216, 0.0540, 0.0162);
+  vec4 c = texture(uSrc, vUv) * w[0];
+  for (int i = 1; i < 5; i++) {
+    float fi = float(i);
+    c += texture(uSrc, vUv + uDir * fi) * w[i];
+    c += texture(uSrc, vUv - uDir * fi) * w[i];
+  }
+  out0 = c;
+}`;
+
+  // Build programs
+  FL_P = {
+    advect:   fl_makeProgram(VS, ADVECT_FS),
+    div:      fl_makeProgram(VS, DIV_FS),
+    pressure: fl_makeProgram(VS, PRESSURE_FS),
+    grad:     fl_makeProgram(VS, GRAD_FS),
+    curl:     fl_makeProgram(VS, CURL_FS),
+    vort:     fl_makeProgram(VS, VORT_FS),
+    splat:    fl_makeProgram(VS, SPLAT_FS),
+    blur:     fl_makeProgram(VS, BLUR_FS),
+    display:  fl_makeProgram(VS, DISPLAY_FS),
+  };
+
+  // Full-screen quad VAO
+  fl_vao = fl_gl.createVertexArray();
+  fl_vbuf = fl_gl.createBuffer();
+  fl_gl.bindVertexArray(fl_vao);
+  fl_gl.bindBuffer(fl_gl.ARRAY_BUFFER, fl_vbuf);
+  fl_gl.bufferData(fl_gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), fl_gl.STATIC_DRAW);
+  fl_gl.enableVertexAttribArray(0);
+  fl_gl.vertexAttribPointer(0, 2, fl_gl.FLOAT, false, 0, 0);
+  fl_gl.bindVertexArray(null);
+
+  // Size canvas and init FBOs
+  fl_canvas.width  = window.innerWidth;
+  fl_canvas.height = window.innerHeight;
+  fl_initFBOs();
+
+  // Apply saved config values to FL_DISPLAY
+  FL_DISPLAY.pressureIterations = CONFIG.fluidPressure;
+  FL_DISPLAY.exposure           = CONFIG.fluidExposure;
+  FL_DISPLAY.saturation         = CONFIG.fluidSaturation;
+  FL_DISPLAY.dyeScale           = CONFIG.fluidDyeScale;
+  FL_DISPLAY.curlScale          = CONFIG.fluidCurlScale;
+  fl_applyPalette(CONFIG.fluidPalette);
+
+  fluidReady = true;
+}
+
+// ============================================================
+// MAIN FRAME LOOP
+// ============================================================
+
+let fl_lastFrameT = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min((now - fl_lastFrameT) / 1000, 0.05);
+  fl_lastFrameT = now;
+  if (CONFIG.theme === 'fluid') {
+    if (!fluidReady) return;
+    fl_simTime += dt;
+    fl_resize();
+    fl_step(dt);
+    fl_inject(dt);
+    fl_injectMouse();
+    fl_render();
+  } else {
+    update(now);
+    render(now);
+  }
+}
 requestAnimationFrame(frame);
 
 // --- WebSocket ---
@@ -1694,7 +2615,6 @@ function updateSessionCount(count) {
 }
 
 // Apply overlay UI updates (tool label, timeline, session count).
-// Called immediately for non-state data, or deferred alongside a queued state.
 function applyOverlayData(data) {
   if (data.sessionTools && data.sessionTools.length > 1) {
     animateToolLabel(data.sessionTools.slice(0, 3).join('  |  '));
@@ -1706,6 +2626,28 @@ function applyOverlayData(data) {
   }
   if (data.history) animateTimelineDots(data.history);
   updateSessionCount(data.activeSessionCount || 0);
+}
+
+function applyThemeUI() {
+  const themeSwatches = document.querySelectorAll('.theme-swatch');
+  if (lastAppliedTheme !== CONFIG.theme) {
+    if (CONFIG.theme === 'fluid') {
+      document.body.style.background = '#f0ebe0';
+    } else {
+      document.body.style.background = '#0a0a0f';
+      document.body.classList.remove('fluid-theme');
+    }
+    lastAppliedTheme = CONFIG.theme;
+  }
+  themeSwatches.forEach(btn => btn.classList.toggle('active', btn.dataset.theme === CONFIG.theme));
+}
+
+function onThemeChange() {
+  flashAlpha = 0;
+  ripples = [];
+  lastAppliedTheme = null;
+  applyThemeUI();
+  transitionTo(currentState, true);
 }
 
 function connect() {
@@ -1721,11 +2663,14 @@ function connect() {
   ws.onmessage = (evt) => {
     try {
       const data = JSON.parse(evt.data);
+
+      // Sync fluid state
+      if (fluidReady) fl_setState(data.state || 'OFF', data);
+
       if (data.state && data.state !== currentState) {
         const now = performance.now();
         const transitionEnd = transitionStart + transitionDuration + 200;
         if (now < transitionEnd) {
-          // Transition still running — hold latest state; overlay updates travel with it
           queuedState = data.state;
           queuedData  = data;
         } else {
@@ -1733,7 +2678,6 @@ function connect() {
           applyOverlayData(data);
         }
       } else {
-        // No state change — overlay updates (tool label, timeline) apply immediately
         applyOverlayData(data);
       }
     } catch (e) {
@@ -1759,6 +2703,7 @@ connect();
 (function initSettings() {
   const panel  = document.getElementById('settings-panel');
   const btn    = document.getElementById('settings-btn');
+  const themeSwatches = document.querySelectorAll('.theme-swatch');
   let isOpen = false;
 
   function openPanel()  { isOpen = true;  panel.classList.add('open');    btn.classList.add('active'); }
@@ -1772,6 +2717,39 @@ connect();
     if (e.key === ',' && !e.ctrlKey && !e.metaKey && !e.altKey) togglePanel();
     if (e.key === 'Escape' && isOpen) closePanel();
   });
+
+  function syncThemeSwatches() {
+    themeSwatches.forEach(el => el.classList.toggle('active', el.dataset.theme === CONFIG.theme));
+  }
+
+  themeSwatches.forEach(el => el.addEventListener('click', () => {
+    if (CONFIG.theme === el.dataset.theme) return;
+    CONFIG.theme = el.dataset.theme;
+    saveConfig();
+    syncThemeSwatches();
+
+    if (CONFIG.theme === 'fluid') {
+      document.body.classList.remove('fluid-theme');
+      document.body.classList.add('fluid-theme');
+      document.getElementById('canvas').style.display = 'none';
+      document.getElementById('fluid-canvas').style.display = 'block';
+      document.getElementById('fluid-settings-group').style.display = '';
+      document.getElementById('particle-settings-groups').style.display = 'none';
+      if (!fluidReady) fl_initGL();
+    } else {
+      // particle
+      document.body.classList.remove('fluid-theme');
+      document.getElementById('canvas').style.display = 'block';
+      document.getElementById('fluid-canvas').style.display = 'none';
+      document.getElementById('fluid-settings-group').style.display = 'none';
+      document.getElementById('particle-settings-groups').style.display = '';
+    }
+
+    applyThemeUI();
+    onThemeChange();
+  }));
+
+  syncThemeSwatches();
 
   // --- Hz pills ---
   const hzPills = document.querySelectorAll('.hz-pill');
@@ -1795,8 +2773,7 @@ connect();
   particleRange.addEventListener('input', () => {
     CONFIG.particleScale = parseInt(particleRange.value) / 100;
     particleVal.textContent = particleRange.value + '%';
-    // Apply immediately
-    const cfg = STATE_CONFIGS[currentState];
+    const cfg = getThemeConfig(currentState);
     const newCount = Math.max(1, Math.round(cfg.count * CONFIG.particleScale * (reducedMotion ? 0.5 : 1)));
     ensureParticlesAnimated(newCount);
     saveConfig();
@@ -1811,7 +2788,6 @@ connect();
     muteBtn.classList.toggle('on', on);
   }
   muteBtn.addEventListener('click', () => {
-    // First click initialises audio if needed
     if (!audioCtx) { initAudio(); transitionAudio(currentState); }
     CONFIG.audioMuted = !CONFIG.audioMuted;
     applyAudioConfig();
@@ -1846,7 +2822,6 @@ connect();
     }
     el.addEventListener('click', () => {
       if (labels && Object.keys(labels).length === 3) {
-        // 3-state cycle: true → false → null → true
         if (CONFIG[configKey] === null) CONFIG[configKey] = true;
         else if (CONFIG[configKey] === true) CONFIG[configKey] = false;
         else CONFIG[configKey] = null;
@@ -1884,7 +2859,59 @@ connect();
     saveConfig();
   });
   syncGravStr();
+
+  // --- Fluid sliders ---
+  function flSlider(id, valId, mapFn, configKey, displayKey) {
+    const el = document.getElementById(id);
+    const val = document.getElementById(valId);
+    if (!el) return;
+    el.addEventListener('input', () => {
+      const v = mapFn(+el.value);
+      CONFIG[configKey] = v;
+      FL_DISPLAY[displayKey] = v;
+      saveConfig();
+      if (val) val.textContent = Number.isInteger(v) ? String(v) : v.toFixed(2) + '×';
+    });
+  }
+  flSlider('fl-pressure',   'fl-pressure-val',   v => Math.round(v),             'fluidPressure',   'pressureIterations');
+  flSlider('fl-dye',        'fl-dye-val',         v => 0.2 + (v/100)*1.8,        'fluidDyeScale',   'dyeScale');
+  flSlider('fl-curl',       'fl-curl-val',        v => 0.1 + (v/100)*2.4,        'fluidCurlScale',  'curlScale');
+  flSlider('fl-exposure',   'fl-exposure-val',    v => 0.2 + (v/100)*2.8,        'fluidExposure',   'exposure');
+  flSlider('fl-saturation', 'fl-saturation-val',  v => (v/100)*2.5,              'fluidSaturation', 'saturation');
+
+  document.getElementById('clear-ink-btn')?.addEventListener('click', () => { if (fluidReady) fl_clearInk(); });
+
+  document.querySelectorAll('.palette-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      CONFIG.fluidPalette = btn.dataset.palette;
+      saveConfig();
+      fl_applyPalette(btn.dataset.palette);
+      document.querySelectorAll('.palette-btn').forEach(b => b.classList.toggle('active', b === btn));
+    });
+  });
+
+  // Apply initial theme UI
+  applyThemeUI();
+
+  // On page load — check if CONFIG.theme is 'fluid' and show the right UI
+  if (CONFIG.theme === 'fluid') {
+    document.getElementById('canvas').style.display = 'none';
+    document.getElementById('fluid-canvas').style.display = 'block';
+    document.getElementById('fluid-settings-group').style.display = '';
+    document.getElementById('particle-settings-groups').style.display = 'none';
+    document.body.classList.add('fluid-theme');
+    fl_initGL();
+    // Sync fluid state with current particle state
+    fl_curState = currentState;
+  }
+
+  // Sync theme swatch active state for fluid
+  syncThemeSwatches();
 })();
+
+// Init particles for OFF state
+ensureParticlesAnimated(getThemeConfig('OFF').count);
+document.getElementById('state-label').style.color = getThemeConfig(currentState).labelColor;
 </script>
 </body>
 </html>
