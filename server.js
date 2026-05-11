@@ -3,7 +3,7 @@ const http = require("http");
 const { WebSocketServer } = require("ws");
 const path = require("path");
 
-const PORT = 7888;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 7888;
 
 // --- State Machine ---
 
