@@ -3126,6 +3126,40 @@ function rb_buildBox() {
   return { positions, normals, indices };
 }
 
+// Procedural cone for the projector beam. Apex at (0, -0.5, 0), open ring at
+// y=+0.5, radius 0.5. No caps — the cone is a translucent volume rendered
+// double-sided, so cap planes would just create darker bands.
+// Output gives `vY` 0..1 along the cone height (apex=0, ring=1) so the
+// fragment shader can fade alpha vertically.
+function rb_buildCone(segments) {
+  segments = segments || 24;
+  const positions = [];
+  const normals = [];
+  const indices = [];
+  // Apex vertex (one shared apex — its normal is approximate but barely affects the
+  // additive translucent shader).
+  positions.push(0, -0.5, 0);
+  normals.push(0, 1, 0);
+  // Open-end ring at y=+0.5
+  for (let i = 0; i <= segments; i++) {
+    const a = (i / segments) * Math.PI * 2;
+    const x = Math.cos(a) * 0.5, z = Math.sin(a) * 0.5;
+    positions.push(x, 0.5, z);
+    // Slant normal — for a cone with apex at -0.5 and base radius 0.5 at +0.5,
+    // the side rises (Δy=1, Δr=0.5), so the outward normal is roughly (x, 0.5, z) / |..|
+    const nLen = Math.hypot(x, 0.5, z);
+    normals.push(x / nLen, 0.5 / nLen, z / nLen);
+  }
+  for (let i = 0; i < segments; i++) {
+    indices.push(0, 1 + i, 1 + i + 1);
+  }
+  return {
+    positions: new Float32Array(positions),
+    normals: new Float32Array(normals),
+    indices: new Uint16Array(indices),
+  };
+}
+
 function rb_buildCylinder(segments) {
   segments = segments || 16;
   const positions = [];
@@ -3183,10 +3217,10 @@ const ROBOT_BONES = [
   { name:'l_elbow',    parent: 5, restT:[0,    -0.40, 0],    restR:[0,0,0] },
   { name:'r_shoulder', parent: 1, restT:[ 0.65, 0.30, 0.05], restR:[0,0,0] },
   { name:'r_elbow',    parent: 7, restT:[0,    -0.40, 0],    restR:[0,0,0] },
-  { name:'l_hip',      parent: 0, restT:[-0.22,-0.45, 0], restR:[0,0,0] },
-  { name:'l_knee',     parent: 9, restT:[0,    -0.45, 0], restR:[0,0,0] },
-  { name:'r_hip',      parent: 0, restT:[ 0.22,-0.45, 0], restR:[0,0,0] },
-  { name:'r_knee',     parent:11, restT:[0,    -0.45, 0], restR:[0,0,0] },
+  { name:'l_hip',      parent: 0, restT:[-0.22,-0.25, 0], restR:[0,0,0] },
+  { name:'l_knee',     parent: 9, restT:[0,    -0.25, 0], restR:[0,0,0] },
+  { name:'r_hip',      parent: 0, restT:[ 0.22,-0.25, 0], restR:[0,0,0] },
+  { name:'r_knee',     parent:11, restT:[0,    -0.25, 0], restR:[0,0,0] },
 ];
 
 const RB_BONE_IDX = {};
@@ -3211,11 +3245,11 @@ const ROBOT_PARTS = [
   // Hammer handle — small stub continuing the forearm direction past the wrist,
   // so the head reads as held rather than floating.
   { bone:RB_BONE_IDX.r_elbow,    mesh:'box', localT:[0,   -0.45, 0   ], scale:[0.06, 0.10, 0.06], colorSlot:'hammer' },
-  { bone:RB_BONE_IDX.l_hip,      mesh:'box', localT:[0,   -0.225,0], scale:[0.26, 0.46, 0.26], colorSlot:'body' },
-  { bone:RB_BONE_IDX.l_knee,     mesh:'box', localT:[0,   -0.225,0], scale:[0.24, 0.44, 0.24], colorSlot:'body' },
-  { bone:RB_BONE_IDX.r_hip,      mesh:'box', localT:[0,   -0.225,0], scale:[0.26, 0.46, 0.26], colorSlot:'body' },
-  { bone:RB_BONE_IDX.r_knee,     mesh:'box', localT:[0,   -0.225,0], scale:[0.24, 0.44, 0.24], colorSlot:'body' },
-  { bone:RB_BONE_IDX.root,       mesh:'cyl', localT:[0,   -1.05, 0], scale:[1.30, 0.06, 1.30], colorSlot:'base' },
+  { bone:RB_BONE_IDX.l_hip,      mesh:'box', localT:[0,   -0.12, 0], scale:[0.26, 0.24, 0.26], colorSlot:'body' },
+  { bone:RB_BONE_IDX.l_knee,     mesh:'box', localT:[0,   -0.11, 0], scale:[0.24, 0.22, 0.24], colorSlot:'body' },
+  { bone:RB_BONE_IDX.r_hip,      mesh:'box', localT:[0,   -0.12, 0], scale:[0.26, 0.24, 0.26], colorSlot:'body' },
+  { bone:RB_BONE_IDX.r_knee,     mesh:'box', localT:[0,   -0.11, 0], scale:[0.24, 0.22, 0.24], colorSlot:'body' },
+  { bone:RB_BONE_IDX.root,       mesh:'cyl', localT:[0,   -1.25, 0], scale:[1.30, 0.06, 1.30], colorSlot:'base' },
 ];
 
 // Pre-bake part local matrices (static)
@@ -3237,14 +3271,15 @@ const rb_activityPose = new Float32Array(RB_POSE_SIZE);
 const RB_LOCAL_SCRATCH = new Float32Array(16);
 
 // Bone-index quick aliases (used by activity drivers)
-const RB_B_ROOT  = RB_BONE_IDX.root;
-const RB_B_TORSO = RB_BONE_IDX.torso;
-const RB_B_HEAD  = RB_BONE_IDX.head;
-const RB_B_VISOR = RB_BONE_IDX.visor;
-const RB_B_LSH   = RB_BONE_IDX.l_shoulder;
-const RB_B_LEL   = RB_BONE_IDX.l_elbow;
-const RB_B_RSH   = RB_BONE_IDX.r_shoulder;
-const RB_B_REL   = RB_BONE_IDX.r_elbow;
+const RB_B_ROOT    = RB_BONE_IDX.root;
+const RB_B_TORSO   = RB_BONE_IDX.torso;
+const RB_B_HEAD    = RB_BONE_IDX.head;
+const RB_B_ANTENNA = RB_BONE_IDX.antenna;
+const RB_B_VISOR   = RB_BONE_IDX.visor;
+const RB_B_LSH     = RB_BONE_IDX.l_shoulder;
+const RB_B_LEL     = RB_BONE_IDX.l_elbow;
+const RB_B_RSH     = RB_BONE_IDX.r_shoulder;
+const RB_B_REL     = RB_BONE_IDX.r_elbow;
 
 function rb_buildBaseFromRest() {
   rb_basePose.fill(0);
@@ -3310,17 +3345,63 @@ function rb_drive_idle_bob(out, t, ampScale) {
   if (bp < 0.03) rb_pS(out, RB_B_VISOR, -0.95);
 }
 
+// Sleep pose: head slumped forward, torso leaning slightly, eyes closed (visor
+// squished), slow breathing. ampScale=0 freezes breathing (used for OFF) while
+// keeping the slumped pose so the robot still reads as "asleep" rather than alert.
+function rb_drive_sleep(out, t, ampScale) {
+  const a = (ampScale === undefined ? 1 : ampScale) * (reducedMotion ? 0.5 : 1);
+  // Slow breathing on the root (slower + slightly deeper than idle bob).
+  rb_pT(out, RB_B_ROOT, 0, Math.sin(t * 0.55) * 0.05 * a, 0);
+  // Very slow side-to-side sway — like passive head-bob during sleep.
+  rb_pR(out, RB_B_ROOT, 0, Math.sin(t * 0.28) * 0.03 * a, 0);
+  // Head slumped forward (chin to chest).
+  rb_pR(out, RB_B_HEAD,  0.55, 0, 0);
+  // Slight torso lean forward — sells the slump.
+  rb_pR(out, RB_B_TORSO, 0.10, 0, 0);
+  // Visor permanently closed (eyes shut). -0.95 squishes scale to ~0.05.
+  rb_pS(out, RB_B_VISOR, -0.95);
+}
+
 function rb_evalActivityPose(state, t, out) {
-  if (state === 'OFF') return;
-  if (state === 'IDLE') { rb_drive_idle_bob(out, t, 1.0); return; }
-  if (state === 'RECEIVING') { rb_drive_idle_bob(out, t, 0.5); return; }
+  if (state === 'OFF') {
+    // OFF still shows the dimmed sleeping body, just motionless.
+    rb_drive_sleep(out, t, 0);
+    return;
+  }
+  if (state === 'IDLE') { rb_drive_sleep(out, t, 1.0); return; }
+  if (state === 'RECEIVING') {
+    rb_drive_idle_bob(out, t, 0.5);
+    // Antenna pulses up to ~40% larger as data lands — radio-dish flex.
+    // Uniform bone scale means the rod *and* ball both inflate, which reads
+    // as "the antenna is actively listening".
+    rb_pS(out, RB_B_ANTENNA, 0.40 * Math.abs(Math.sin(t * 6)));
+    return;
+  }
   if (state === 'THINKING') {
     rb_drive_idle_bob(out, t, 0.5);
-    rb_pR(out, RB_B_HEAD, 0, 0, -0.15);
+    // Head: small forward tilt + slight cock to the side ("deep in thought").
+    rb_pR(out, RB_B_HEAD, 0.10, 0, -0.12);
+    // Right arm — hand to chin. Rotation order is Rx*Ry*Rz (Rz acts first):
+    //   r_shoulder.z = -2.00 → upper arm swings up and across the body in the X-Y plane
+    //                           — arm direction becomes (~-0.91, +0.42, 0), up-and-inward
+    //   r_elbow.x    = +2.10 → forearm folds FORWARD (toward +Z) in the rotated elbow
+    //                           frame so the hand ends up at chin height, just in front of
+    //                           the face — approx (+0.13, +1.08, +0.42).
+    rb_pR(out, RB_B_RSH, 0, 0, -2.00);
+    rb_pR(out, RB_B_REL, 2.10, 0, 0);
     return;
   }
   if (state === 'PLANNING') {
     rb_drive_idle_bob(out, t, 0.5);
+    // Head tilted down — looking at the holographic blueprint floating in front.
+    rb_pR(out, RB_B_HEAD, 0.15, 0, 0);
+    // Right arm extended forward, pointing at the blueprint, with a periodic
+    // index-tap pulse at the elbow.
+    //   r_shoulder.x = -1.20  → upper arm rotates forward, hand swings out in front
+    //                            of the body (arm dir ≈ (0, -0.36, +0.93))
+    //   r_elbow.x base = -0.35 + 0.25·sin(t·5) → forearm pulses to "tap" the blueprint
+    rb_pR(out, RB_B_RSH, -1.20, 0, 0);
+    rb_pR(out, RB_B_REL, -0.35 + 0.25 * Math.sin(t * 5), 0, 0);
     return;
   }
   if (state === 'DELEGATING') {
@@ -3422,9 +3503,23 @@ function rb_stepFx(dt) {
   }
 }
 
-const rb_fxTimers = { ring: 0, q: 0, blueprint: 0, delegate: 0, sparkle: 0, spark: 0, off: 0 };
+const rb_fxTimers = { ring: 0, q: 0, blueprint: 0, delegate: 0, sparkle: 0, spark: 0, off: 0, zzz: 0, anvil: 0 };
 
 function rb_emitStateFx(dt, t) {
+  if (rb_curState === 'IDLE') {
+    rb_fxTimers.zzz += dt;
+    if (rb_fxTimers.zzz > 2.6) {
+      rb_fxTimers.zzz = 0;
+      // Z drifts up-and-slightly-right from above the slumped head.
+      rb_emitFx({
+        x: 0.32, y: 1.30, z: 0.20,
+        vx: 0.04, vy: 0.30, vz: 0.02,
+        life: 2.6, alpha: 0.95, scale: 0.55,
+        color: [0.70, 0.85, 1.00],   // cool blue, matches IDLE tint
+        shape: 6, intensity: 1.5,
+      });
+    }
+  }
   if (rb_curState === 'OFF') {
     rb_fxTimers.off += dt;
     if (rb_fxTimers.off > 0.7) {
@@ -3463,30 +3558,47 @@ function rb_emitStateFx(dt, t) {
     if (rb_fxTimers.blueprint <= 0) {
       rb_fxTimers.blueprint = 1.4;
       const cfg = ROBOT_STATE_CFG.PLANNING;
+      // Blueprint floats in front of the robot at chest level, so the
+      // forward-extended right arm reads as pointing/tapping at it.
       rb_emitFx({
-        x:0.75, y:0.35, z:0.1, life:1.5, alpha:0.7, scale:1.2,
+        x:0.55, y:0.65, z:0.65, life:1.5, alpha:0.7, scale:1.10,
         color:cfg.tint, shape:5, intensity:1.0,
       });
     }
   }
   if (rb_curState === 'DELEGATING') {
     rb_fxTimers.delegate += dt;
-    if (rb_fxTimers.delegate > 0.45) {
+    if (rb_fxTimers.delegate > 0.60) {
       rb_fxTimers.delegate = 0;
       const cfg = ROBOT_STATE_CFG.DELEGATING;
-      const theta = Math.random() * Math.PI * 2;
-      const v = 0.6;
-      rb_emitFx({
-        x:0, y:0.55, z:0,
-        vx:Math.cos(theta) * v,
-        vy:(Math.random() - 0.4) * 0.5,
-        vz:Math.sin(theta) * v,
-        life:1.5, alpha:0.95, scale:0.32, endScale:0.0,
-        color:cfg.tint, shape:0, intensity:1.5,
-      });
+      // Spawn a fan-cluster of 3 mini-bots from the chest, each on a slightly
+      // different outward heading so they read as a coordinated dispatch.
+      const baseTheta = Math.random() * Math.PI * 2;
+      const v = 0.55;
+      for (let i = 0; i < 3; i++) {
+        const theta = baseTheta + (i - 1) * 0.32;   // spread ±0.32 rad
+        rb_emitFx({
+          x:0, y:0.55, z:0,
+          vx:Math.cos(theta) * v,
+          vy:(Math.random() - 0.3) * 0.45,
+          vz:Math.sin(theta) * v,
+          life:1.4, alpha:0.95, scale:0.30, endScale:0.06,
+          color:cfg.tint, shape:8, intensity:1.4,
+        });
+      }
     }
   }
   if (rb_curState === 'WORKING') {
+    // Permanent-looking anvil at the strike point — re-emit before the previous one
+    // expires so there's always one alive while WORKING is the active state.
+    rb_fxTimers.anvil -= dt;
+    if (rb_fxTimers.anvil <= 0) {
+      rb_fxTimers.anvil = 1.6;
+      rb_emitFx({
+        x: 0.65, y: 0.18, z: 0.72, life: 1.8, alpha: 0.92, scale: 0.65,
+        color: [0.62, 0.50, 0.32], shape: 7, intensity: 1.3,
+      });
+    }
     const period = 0.8;
     const tp = t - Math.floor(t / period) * period;
     rb_fxTimers.spark += dt;
@@ -3529,7 +3641,7 @@ function rb_emitStateFx(dt, t) {
 
 // --- Phase 4: Per-state config (tints derived from STATE_CONFIGS palette identity) ---
 const ROBOT_STATE_CFG = {
-  OFF:        { tint:[0.78, 0.78, 0.86],  emissiveBoost:0.6, hideBody:true,  scanlineAmp:0.04, glitchFreq:0.0  },
+  OFF:        { tint:[0.55, 0.62, 0.78],  emissiveBoost:0.45,hideBody:false, scanlineAmp:0.04, glitchFreq:0.0  },
   IDLE:       { tint:[0.667,0.823,0.941], emissiveBoost:1.0, hideBody:false, scanlineAmp:0.08, glitchFreq:0.0  },
   RECEIVING:  { tint:[1.0,  1.0,  1.0],   emissiveBoost:1.4, hideBody:false, scanlineAmp:0.10, glitchFreq:0.0  },
   THINKING:   { tint:[0.627,0.471,0.941], emissiveBoost:1.1, hideBody:false, scanlineAmp:0.08, glitchFreq:0.04 },
@@ -3666,8 +3778,100 @@ void main() {
     float frameMask = step(0.05, max(abs(p.x), abs(p.y))) - step(0.46, max(abs(p.x), abs(p.y)));
     float mask = 1.0 - smoothstep(0.45, 0.5, max(abs(p.x), abs(p.y)));
     profile = (grid * 0.9 + frameMask * 0.8) * mask;
+  } else if (uShape == 6) {
+    // "Z" letter for sleep — three rounded capsule strokes (top bar, diagonal, bottom bar)
+    float thickness = 0.06;
+    float dist = 100.0;
+    vec2 pa, ba;
+    float h;
+    // top bar: (-0.22, +0.22) → (+0.22, +0.22)
+    pa = p - vec2(-0.22, 0.22);
+    ba = vec2(0.44, 0.0);
+    h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    dist = min(dist, length(pa - ba * h) - thickness);
+    // diagonal: (+0.22, +0.22) → (-0.22, -0.22)
+    pa = p - vec2(0.22, 0.22);
+    ba = vec2(-0.44, -0.44);
+    h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    dist = min(dist, length(pa - ba * h) - thickness);
+    // bottom bar: (-0.22, -0.22) → (+0.22, -0.22)
+    pa = p - vec2(-0.22, -0.22);
+    ba = vec2(0.44, 0.0);
+    h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    dist = min(dist, length(pa - ba * h) - thickness);
+    profile = smoothstep(0.02, -0.02, dist);
+  } else if (uShape == 7) {
+    // Anvil — three stacked SDF boxes (wide top "face", narrow neck, wide base)
+    float dist = 100.0;
+    // Top working surface — wide rectangle near the top
+    vec2 top = vec2(abs(p.x) - 0.32, abs(p.y - 0.18) - 0.08);
+    dist = min(dist, max(top.x, top.y));
+    // Neck — narrower middle
+    vec2 mid = vec2(abs(p.x) - 0.14, abs(p.y - 0.00) - 0.10);
+    dist = min(dist, max(mid.x, mid.y));
+    // Base — wide block at the bottom
+    vec2 bot = vec2(abs(p.x) - 0.28, abs(p.y + 0.22) - 0.10);
+    dist = min(dist, max(bot.x, bot.y));
+    profile = smoothstep(0.025, -0.025, dist);
+  } else if (uShape == 8) {
+    // Mini-bot silhouette — head + body + two legs, a 4-block "tiny robot"
+    float dist = 100.0;
+    // Head
+    vec2 head = vec2(abs(p.x) - 0.13, abs(p.y - 0.26) - 0.10);
+    dist = min(dist, max(head.x, head.y));
+    // Body (wider)
+    vec2 body = vec2(abs(p.x) - 0.21, abs(p.y - 0.02) - 0.12);
+    dist = min(dist, max(body.x, body.y));
+    // Two legs
+    vec2 legL = vec2(abs(p.x + 0.10) - 0.05, abs(p.y + 0.27) - 0.10);
+    dist = min(dist, max(legL.x, legL.y));
+    vec2 legR = vec2(abs(p.x - 0.10) - 0.05, abs(p.y + 0.27) - 0.10);
+    dist = min(dist, max(legR.x, legR.y));
+    profile = smoothstep(0.02, -0.02, dist);
   }
   fragColor = vec4(uColor * uIntensity * profile, uAlpha * profile);
+}`;
+
+// --- Projector cone shaders (TASK-037 — translucent vertical-fade beam) ---
+// Vertex shader: standard MVP. The cone mesh has y values in [-0.5, +0.5]
+// (apex=-0.5, ring=+0.5); we pass a 0..1 t (apex=0, ring=1) to the fragment.
+const RB_VS_CONE = `#version 300 es
+precision highp float;
+layout(location=0) in vec3 aPos;
+layout(location=1) in vec3 aNorm;
+uniform mat4 uMVP;
+out float vT;     // 0 at apex (bottom), 1 at open ring (top)
+out vec3 vWorldNorm;
+void main() {
+  vT = clamp(aPos.y + 0.5, 0.0, 1.0);
+  vWorldNorm = aNorm;
+  gl_Position = uMVP * vec4(aPos, 1.0);
+}`;
+// Fragment shader: alpha brightest at the apex, fading to ~0 at the top.
+// Slight rim-emphasis on the cone's slant edges via the normal — sells the
+// "beam of light" rather than a solid cone shape.
+const RB_FS_CONE = `#version 300 es
+precision highp float;
+in float vT;
+in vec3 vWorldNorm;
+uniform vec3 uTint;
+uniform float uIntensity;
+uniform float uTime;
+uniform float uReducedMotion;
+out vec4 fragColor;
+void main() {
+  // Vertical fade — strong at apex, gone at top.
+  float vFade = pow(1.0 - vT, 1.3);
+  // Subtle horizontal flicker so the beam reads as live energy.
+  float flicker = uReducedMotion > 0.5
+    ? 1.0
+    : 0.9 + 0.1 * sin(uTime * 8.0 + vT * 6.0);
+  // Soft edge on the cone slant (visible "rim of the beam") — modulated by
+  // how much the slant normal points outward in screen-space terms.
+  float rim = abs(vWorldNorm.y);
+  // Final color is the tint × emissive boost × all the fades.
+  float a = vFade * flicker * uIntensity * (0.6 + 0.4 * rim);
+  fragColor = vec4(uTint * a, a);
 }`;
 
 // rb_-namespaced shader compile (independent of fl_gl)
@@ -3697,10 +3901,13 @@ function rb_makeProgram(vsSrc, fsSrc) {
 // --- Phase 6: GL state, init, resize, step, render ---
 let rb_progBody = null;
 let rb_progFx   = null;
+let rb_progCone = null;
 let rb_boxVAO = null,  rb_boxIdxCount = 0;
 let rb_cylVAO = null,  rb_cylIdxCount = 0;
+let rb_coneVAO = null, rb_coneIdxCount = 0;
 let rb_fxQuadVAO = null;
 let rb_uBody = {};
+let rb_uCone = {};
 let rb_uFx   = {};
 
 const RB_PROJ = new Float32Array(16);
@@ -3733,7 +3940,8 @@ function rb_initGL() {
 
   rb_progBody = rb_makeProgram(RB_VS_BODY, RB_FS_BODY);
   rb_progFx   = rb_makeProgram(RB_VS_FX,   RB_FS_FX);
-  if (!rb_progBody || !rb_progFx) {
+  rb_progCone = rb_makeProgram(RB_VS_CONE, RB_FS_CONE);
+  if (!rb_progBody || !rb_progFx || !rb_progCone) {
     // Shader compile/link failed — fall back to particle silently.
     console.warn('[robot] shader programs failed to build; falling back to particle theme');
     rb_gl = null;
@@ -3772,6 +3980,13 @@ function rb_initGL() {
     uAlpha:       gl.getUniformLocation(rb_progFx, 'uAlpha'),
     uShape:       gl.getUniformLocation(rb_progFx, 'uShape'),
   };
+  rb_uCone = {
+    uMVP:          gl.getUniformLocation(rb_progCone, 'uMVP'),
+    uTint:         gl.getUniformLocation(rb_progCone, 'uTint'),
+    uIntensity:    gl.getUniformLocation(rb_progCone, 'uIntensity'),
+    uTime:         gl.getUniformLocation(rb_progCone, 'uTime'),
+    uReducedMotion:gl.getUniformLocation(rb_progCone, 'uReducedMotion'),
+  };
 
   // Box VAO
   const box = rb_buildBox();
@@ -3802,6 +4017,21 @@ function rb_initGL() {
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cylIdxBuf);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, cyl.indices, gl.STATIC_DRAW);
   rb_cylIdxCount = cyl.indices.length;
+
+  // Cone VAO (projector beam)
+  const cone = rb_buildCone(28);
+  rb_coneVAO = gl.createVertexArray();
+  gl.bindVertexArray(rb_coneVAO);
+  buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, cone.positions, gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+  buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, cone.normals, gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+  const coneIdxBuf = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, coneIdxBuf);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, cone.indices, gl.STATIC_DRAW);
+  rb_coneIdxCount = cone.indices.length;
 
   // FX quad VAO (2 tris, screen-aligned unit corners)
   rb_fxQuadVAO = gl.createVertexArray();
@@ -3920,6 +4150,43 @@ function rb_render(now) {
       gl.bindVertexArray(rb_cylVAO);
       gl.drawElements(gl.TRIANGLES, rb_cylIdxCount, gl.UNSIGNED_SHORT, 0);
     }
+  }
+
+  // ---- Projector cone pass (translucent volume above the disc) ----
+  // Hidden during OFF — the hologram is off, so its beam should be off too.
+  // Drawn after the body so the cone reads as glow surrounding/in-front-of the robot.
+  // Additive blend, depth-read but no depth-write, no backface culling (we want to see
+  // the inside of the cone too).
+  if (rb_curState !== 'OFF') {
+    gl.blendFunc(gl.ONE, gl.ONE);
+    gl.depthMask(false);
+    gl.disable(gl.CULL_FACE);
+
+    gl.useProgram(rb_progCone);
+    gl.bindVertexArray(rb_coneVAO);
+
+    // Build the cone world matrix:
+    //   apex at (0, -1.25, 0) — right at the projector disc level
+    //   ring at (0, -0.55, 0) — just barely overlapping the bottom of the shins
+    //                            (feet bottom is around y=-0.72 after the leg shrink)
+    // Unit cone has apex at y=-0.5 / ring at y=+0.5 / ring radius 0.5, so:
+    //   center y     = (-1.25 + -0.55) / 2 = -0.90
+    //   scale Y      = 0.70  (height 0.70)
+    //   scale X / Z  = 0.80  (top radius 0.40 — envelops the legs without dominating)
+    m4_identity(RB_PART_WORLD);
+    m4_translate(RB_PART_WORLD, RB_PART_WORLD, 0, -0.90, 0);
+    m4_scale(RB_PART_WORLD, RB_PART_WORLD, 0.80, 0.70, 0.80);
+    // Parent to root bone so the cone follows any root rotation/translation
+    // (turntable in DELEGATING, breathing bob, etc.).
+    m4_multiply(RB_PART_WORLD, RB_MAT_POOL[RB_B_ROOT], RB_PART_WORLD);
+    m4_multiply(RB_MVP, RB_VP, RB_PART_WORLD);
+    gl.uniformMatrix4fv(rb_uCone.uMVP, false, RB_MVP);
+    gl.uniform3fv(rb_uCone.uTint, cfg.tint);
+    // Cone intensity tracks robot intensity but stays a bit softer than the body.
+    gl.uniform1f(rb_uCone.uIntensity, 0.32 * intensity);
+    gl.uniform1f(rb_uCone.uTime, rb_stateTime);
+    gl.uniform1f(rb_uCone.uReducedMotion, reducedMotion ? 1.0 : 0.0);
+    gl.drawElements(gl.TRIANGLES, rb_coneIdxCount, gl.UNSIGNED_SHORT, 0);
   }
 
   // ---- FX pass (additive, depth-test on, depth-write off) ----
